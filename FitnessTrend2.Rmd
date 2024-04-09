@@ -49,14 +49,15 @@ colnames(data_physact_q1)[3] <- 'state_desc'
 colnames(data_physact_q1)[4] <- 'demographic'
 colnames(data_physact_q1)[5] <- 'Response'
 colnames(data_physact_q1)[6] <- 'CrudePrevalence'
-head(data_physact_q1)
+data_physact_q1
 
-data_physact_q1$CrudePrevalence <- ifelse(data_physact_q1$CrudePrevalence!=0.0, data_physact_q1$CrudePrevalence/100, 0)
+data_physact_q1$CrudePrevalence <- ifelse(data_physact_q1$CrudePrevalence!=0.0, data_physact_q1$CrudePrevalence/100, 0.0)
 data_physact_q1$Year <- as.factor(data_physact_q1$Year)
 data_physact_q1$state_cd <- as.factor(data_physact_q1$state_cd)
 data_physact_q1$demographic <- as.factor(data_physact_q1$demographic)
 data_physact_q1$Response <- as.factor(data_physact_q1$Response)
 data_physact_q1$state_desc <- tolower(data_physact_q1$state_desc)
+data_physact_q1
 head(data_physact_q1)
 ```
 # modeling 
@@ -81,15 +82,10 @@ data_physact_inactive_race <- data_physact_inactive %>%
 
 head(data_physact_inactive_age)
 ```
-```{r}
-# all demos
-mod.fit.inactive <- lm(CrudePrevalence ~ demographic, data=data_physact_inactive)
-summary(mod.fit.inactive)
-plot(mod.fit.inactive)
-```
+
 
 ```{r}
-# all age groups increasing in inactivity
+# all age groups not meeting CDC guidelines for fitness but gets worse with older groups
 mod.fit.inactive.age <- lm(CrudePrevalence ~ demographic, data=data_physact_inactive_age)
 summary(mod.fit.inactive.age)
 plot(mod.fit.inactive.age)
@@ -113,8 +109,26 @@ mod.fit.inactive.race <- lm(CrudePrevalence ~ demographic, data=data_physact_ina
 summary(mod.fit.inactive.race)
 plot(mod.fit.inactive.race)
 ```
+# Visualize
+age and sex fall in line with expectations, so graphing race because has most interesting insights
 
-# Fitness 2
+```{r}
+data_inactive_geo_race <- left_join(fifty_states,data_physact_inactive_race, by='state_desc')
+data_inactive_geo_race <- data_inactive_geo_race %>% drop_na()
+head(data_inactive_geo_race)
+```
+```{r}
+ggplot() + 
+  geom_polygon(data=data_inactive_geo_race, aes(x=long, y=lat, group = group, fill=CrudePrevalence), color='white') + 
+  scale_size(name="") + 
+  facet_wrap(demographic~.)+
+  theme_void() +
+  ggtitle('Inactive Adults - Race') + 
+  labs(fill = 'Crude Prevalence %')
+```
+
+# Fitness 2 
+meeting guidelines might be too strict, looking at general inactivity
 ```{r}
 data_npo <- read.csv('crc/nutrition-physicalactivity-obesity.csv', check.names = FALSE)
 head(data_npo)
@@ -150,8 +164,8 @@ race2 <- c("2 or more races", "American Indian/Alaska Native", "Asian", "Hawaiia
 data_physact2_2019_inactive_race <- data_physact2_2019 %>% 
   filter(race_ethnicity %in% race2 & fitness_category == 'Percent of adults who engage in no leisure-time physical activity')
 
-data_inactive_geo_race <- left_join(fifty_states,data_physact2_2019_inactive_race, by='state_desc')
-data_inactive_geo_race <- data_inactive_geo_race %>% drop_na()
+data_inactive_geo_race2 <- left_join(fifty_states,data_physact2_2019_inactive_race, by='state_desc')
+data_inactive_geo_race2 <- data_inactive_geo_race2 %>% drop_na()
 head(data_inactive_geo_race)
 ```
 
@@ -161,11 +175,11 @@ Races: American Indian/Alaska Native, Black, non-Hispanic, Hispanic, Multiracial
 risk_states <- c('OK', 'AL', 'VA', 'SD', 'WI', 'ME', 'WY', 'MS', 'WV', 'IN')
 ```{r}
 ggplot() + 
-  geom_polygon(data=data_inactive_geo_race, aes(x=long, y=lat, group = group, fill=percent), color='white') + 
+  geom_polygon(data=data_inactive_geo_race2, aes(x=long, y=lat, group = group, fill=percent), color='white') +
   scale_size(name="") + 
   facet_wrap(race_ethnicity~.)+
   theme_void() +
-  ggtitle('Inactive Adults - Race') + 
+  # ggtitle('Inactive Adults - Race') + 
   labs(fill = 'Percent %')
 ```
 
