@@ -12,7 +12,6 @@ library(tidyr)
 library(tidyverse)
 library(dplyr)
 library(ggplot2)
-library(ggpattern)
 ```
 
 # Fitness 1
@@ -27,63 +26,92 @@ head(data_physact)
 ```{r}
 # EO-CRC rising in all races (especially White and Black) and males
 demographics <- c('18-24', '25-34', '35-44', '45-54', 'Black, non-Hispanic', 'White, non-Hispanic', 'American Indian or Alaskan Native, non-Hispanic', 'Asian, non-Hispanic', 'Native Hawaiian or other Pacific Islander, non-Hispanic', 'Multiracial, non-Hispanic', 'Other, non-Hispanic', 'Hispanic', 'Female', 'Male')
-age <- c('18-24', '25-34', '35-44', '45-54')
 race <- c('Black, non-Hispanic', 'White, non-Hispanic', 'American Indian or Alaskan Native, non-Hispanic', 'Asian, non-Hispanic', 'Native Hawaiian or other Pacific Islander, non-Hispanic', 'Multiracial, non-Hispanic', 'Other, non-Hispanic', 'Hispanic')
+age <- c('18-24', '25-34', '35-44', '45-54')
 sex <- c('Female', 'Male')
 ```
 
 ```{r}
-# 2019 most recent data available
-data_physact_2019 <- data_physact %>% 
-  filter(Question == 'Participated in enough Aerobic and Muscle Strengthening exercises to meet guidelines (variable calculated from one or more BRFSS questions)' &
-           Year == 2019) %>%
-  select(Locationabbr, Locationdesc, Break_Out, Response, Data_value) %>% 
+# adults who meet cdc criteria for activity
+data_physact_q1 <- data_physact %>% 
+  filter(Question == 'Participated in enough Aerobic and Muscle Strengthening exercises to meet guidelines (variable calculated from one or more BRFSS questions)') %>%
+  select(Year, Locationabbr, Locationdesc, Break_Out, Response, Data_value) %>% 
   replace(is.na(.), 0)
-head(data_physact_2019)
+head(data_physact_q1)
 ```
 
 ```{r}
 data("fifty_states")
 colnames(fifty_states)[6] <- 'state_desc'
-colnames(data_physact_2019)[1] <- 'state_cd'
-colnames(data_physact_2019)[2] <- 'state_desc'
-colnames(data_physact_2019)[3] <- 'demographic'
-colnames(data_physact_2019)[4] <- 'Response'
-colnames(data_physact_2019)[5] <- 'CrudePrevalence'
-data_physact_2019$state_desc <- tolower(data_physact_2019$state_desc)
-head(data_physact_2019)
+colnames(data_physact_q1)[1] <- 'Year'
+colnames(data_physact_q1)[2] <- 'state_cd'
+colnames(data_physact_q1)[3] <- 'state_desc'
+colnames(data_physact_q1)[4] <- 'demographic'
+colnames(data_physact_q1)[5] <- 'Response'
+colnames(data_physact_q1)[6] <- 'CrudePrevalence'
+head(data_physact_q1)
+
+data_physact_q1$CrudePrevalence <- ifelse(data_physact_q1$CrudePrevalence!=0.0, data_physact_q1$CrudePrevalence/100, 0)
+data_physact_q1$Year <- as.factor(data_physact_q1$Year)
+data_physact_q1$state_cd <- as.factor(data_physact_q1$state_cd)
+data_physact_q1$demographic <- as.factor(data_physact_q1$demographic)
+data_physact_q1$Response <- as.factor(data_physact_q1$Response)
+data_physact_q1$state_desc <- tolower(data_physact_q1$state_desc)
+head(data_physact_q1)
 ```
+# modeling 
+i believe the skip years make it so the increments are not linear, hence to fit to a linear model, i filtered to the most recent year to observe the relationship between demographics and fitness. 
 
 ```{r}
-data_physact_2019_no <- data_physact_2019 %>% 
+data_physact_q1_2019 <- data_physact_q1 %>%
+  filter(Year==2019)
+
+data_physact_inactive <- data_physact_q1_2019 %>% 
   filter(demographic %in% demographics & Response == 'No') %>%
   replace(is.na(.), 0)
-data_physact_2019_ageno <- data_physact_2019_no %>% 
+data_physact_inactive_age <- data_physact_inactive %>% 
   filter(demographic %in% age) %>%
   replace(is.na(.), 0)
-data_physact_2019_sexno <- data_physact_2019_no %>% 
+data_physact_inactive_sex <- data_physact_inactive %>% 
   filter(demographic %in% sex) %>%
   replace(is.na(.), 0)
-data_physact_2019_raceno <- data_physact_2019_no %>% 
+data_physact_inactive_race <- data_physact_inactive %>% 
   filter(demographic %in% race) %>%
   replace(is.na(.), 0)
+
+head(data_physact_inactive_age)
+```
+```{r}
+# all demos
+mod.fit.inactive <- lm(CrudePrevalence ~ demographic, data=data_physact_inactive)
+summary(mod.fit.inactive)
+plot(mod.fit.inactive)
 ```
 
 ```{r}
-mod.fit.no.age <- lm(CrudePrevalence ~ demographic, data=data_physact_2019_ageno)
-summary(mod.fit.no.age)
-```
-```{r}
-# males are more likely to meet cdc guidelines of weekly activity than females...
-mod.fit.no.sex <- lm(CrudePrevalence ~ demographic, data=data_physact_2019_sexno)
-summary(mod.fit.no.sex)
+# all age groups increasing in inactivity
+mod.fit.inactive.age <- lm(CrudePrevalence ~ demographic, data=data_physact_inactive_age)
+summary(mod.fit.inactive.age)
+plot(mod.fit.inactive.age)
 ```
 
+
+
 ```{r}
-# more likely to meet cdc guidelines of weekly activity: asian, pacific islander, other
-# less likely to meet cdc guidelines of weekly activity: black, hispanic, multiracial, and white
-mod.fit.no.race <- lm(CrudePrevalence ~ demographic, data=data_physact_2019_raceno)
-summary(mod.fit.no.race)
+# males more likely to abide to CDC guidelines for fitness
+mod.fit.inactive.sex <- lm(CrudePrevalence ~ demographic, data=data_physact_inactive_sex)
+summary(mod.fit.inactive.sex)
+plot(mod.fit.inactive.sex)
+```
+
+
+
+```{r}
+# more likely to abide to CDC guidelines for fitness: asian, pacific islander (i suspect lack of data for significant decrease), and other
+# less likely to abide to CDC guidelines for fitness: american indian/alaskan native, black, hispanic, multiracial, white
+mod.fit.inactive.race <- lm(CrudePrevalence ~ demographic, data=data_physact_inactive_race)
+summary(mod.fit.inactive.race)
+plot(mod.fit.inactive.race)
 ```
 
 # Fitness 2
@@ -129,7 +157,7 @@ head(data_inactive_geo_race)
 
 
 # From obesity analysis
-risk_demo <- c('Black, non-Hispanic', 'Hispanic', 'Multiracial, non-Hispanic', 'White, non-Hispanic')
+Races: American Indian/Alaska Native, Black, non-Hispanic, Hispanic, Multiracial, non-Hispanic, White, non-Hispanic
 risk_states <- c('OK', 'AL', 'VA', 'SD', 'WI', 'ME', 'WY', 'MS', 'WV', 'IN')
 ```{r}
 ggplot() + 

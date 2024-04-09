@@ -74,6 +74,7 @@ data_bmi_race_risk <- data_bmi_clean %>%
 mod.fit.age <- lm(CrudePrevalence ~ Year + demographic + Year*demographic, data=data_bmi_age_risk)
 summary(mod.fit.age)
 plot(mod.fit.age)
+
 ```
 
 ```{r}
