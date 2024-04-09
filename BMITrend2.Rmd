@@ -74,6 +74,7 @@ data_bmi_race_risk <- data_bmi_clean %>%
 mod.fit.age <- lm(CrudePrevalence ~ Year + demographic + Year*demographic, data=data_bmi_age_risk)
 summary(mod.fit.age)
 plot(mod.fit.age)
+
 ```
 
 ```{r}
@@ -137,13 +138,15 @@ data_bmi_clean %>%
 data_risk_demo_geo
 ```
 
-```{r, fig.height=8}
-ggplot(data_risk_demo_geo, aes(x=state_desc, y=CrudePrevalence, color=demographic)) +
+
+
+```{r, fig.height=6}
+ggplot(data_risk_demo_geo, aes(x=reorder(state_desc, CrudePrevalence), y=CrudePrevalence, color=demographic)) +
   geom_point() +
   geom_segment(aes(x=state_desc, xend=state_desc, y=0, yend=CrudePrevalence)) +
   coord_flip() +
   theme_classic() +
-  ggtitle('Obesity Prevalence by Race and US State (2022)') + 
-  labs(x = 'State', y = 'Crude Prevalence %', color='Demographic')
+  # ggtitle('Obesity Prevalence by Race and US State (2022)') + 
+  labs(x = 'State', y = 'Crude Prevalence %', color='Demographic') 
 ```
 
