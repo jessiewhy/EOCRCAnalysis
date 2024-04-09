@@ -1,0 +1,143 @@
+---
+title: "Fitness"
+author: "Jessie Huang"
+date: "2024-04-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(fiftystater)
+library(tidyr)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(ggpattern)
+```
+
+# Fitness 1
+CDC Guidelines:
+Adults (18-64 years): At least 150 minutes a week of moderate intensity activity such as brisk walking. At least 2 days a week of activities that strengthen muscles. Aim for the recommended activity level but be as active as you are able.
+
+```{r}
+data_physact <- read.csv('crc/physicalactivity.csv', check.names = FALSE)
+head(data_physact)
+```
+
+```{r}
+# EO-CRC rising in all races (especially White and Black) and males
+demographics <- c('18-24', '25-34', '35-44', '45-54', 'Black, non-Hispanic', 'White, non-Hispanic', 'American Indian or Alaskan Native, non-Hispanic', 'Asian, non-Hispanic', 'Native Hawaiian or other Pacific Islander, non-Hispanic', 'Multiracial, non-Hispanic', 'Other, non-Hispanic', 'Hispanic', 'Female', 'Male')
+age <- c('18-24', '25-34', '35-44', '45-54')
+race <- c('Black, non-Hispanic', 'White, non-Hispanic', 'American Indian or Alaskan Native, non-Hispanic', 'Asian, non-Hispanic', 'Native Hawaiian or other Pacific Islander, non-Hispanic', 'Multiracial, non-Hispanic', 'Other, non-Hispanic', 'Hispanic')
+sex <- c('Female', 'Male')
+```
+
+```{r}
+# 2019 most recent data available
+data_physact_2019 <- data_physact %>% 
+  filter(Question == 'Participated in enough Aerobic and Muscle Strengthening exercises to meet guidelines (variable calculated from one or more BRFSS questions)' &
+           Year == 2019) %>%
+  select(Locationabbr, Locationdesc, Break_Out, Response, Data_value) %>% 
+  replace(is.na(.), 0)
+head(data_physact_2019)
+```
+
+```{r}
+data("fifty_states")
+colnames(fifty_states)[6] <- 'state_desc'
+colnames(data_physact_2019)[1] <- 'state_cd'
+colnames(data_physact_2019)[2] <- 'state_desc'
+colnames(data_physact_2019)[3] <- 'demographic'
+colnames(data_physact_2019)[4] <- 'Response'
+colnames(data_physact_2019)[5] <- 'CrudePrevalence'
+data_physact_2019$state_desc <- tolower(data_physact_2019$state_desc)
+head(data_physact_2019)
+```
+
+```{r}
+data_physact_2019_no <- data_physact_2019 %>% 
+  filter(demographic %in% demographics & Response == 'No') %>%
+  replace(is.na(.), 0)
+data_physact_2019_ageno <- data_physact_2019_no %>% 
+  filter(demographic %in% age) %>%
+  replace(is.na(.), 0)
+data_physact_2019_sexno <- data_physact_2019_no %>% 
+  filter(demographic %in% sex) %>%
+  replace(is.na(.), 0)
+data_physact_2019_raceno <- data_physact_2019_no %>% 
+  filter(demographic %in% race) %>%
+  replace(is.na(.), 0)
+```
+
+```{r}
+mod.fit.no.age <- lm(CrudePrevalence ~ demographic, data=data_physact_2019_ageno)
+summary(mod.fit.no.age)
+```
+```{r}
+# males are more likely to meet cdc guidelines of weekly activity than females...
+mod.fit.no.sex <- lm(CrudePrevalence ~ demographic, data=data_physact_2019_sexno)
+summary(mod.fit.no.sex)
+```
+
+```{r}
+# more likely to meet cdc guidelines of weekly activity: asian, pacific islander, other
+# less likely to meet cdc guidelines of weekly activity: black, hispanic, multiracial, and white
+mod.fit.no.race <- lm(CrudePrevalence ~ demographic, data=data_physact_2019_raceno)
+summary(mod.fit.no.race)
+```
+
+# Fitness 2
+```{r}
+data_npo <- read.csv('crc/nutrition-physicalactivity-obesity.csv', check.names = FALSE)
+head(data_npo)
+
+data_physact2 <- data_npo %>% filter(Class == 'Physical Activity')
+head(data_physact2)
+```
+
+```{r}
+# 2019 most recent data for activity questions
+data_physact2_2019 <- data_physact2 %>% 
+  filter(YearEnd == 2019) %>%
+  select(LocationAbbr, LocationDesc, 'Age(years)', Gender, 'Race/Ethnicity', Question, Data_Value) %>%
+  replace(is.na(.), 0)
+head(data_physact2_2019)
+```
+
+```{r}
+colnames(data_physact2_2019)[1] <- 'state_cd'
+colnames(data_physact2_2019)[2] <- 'state_desc'
+colnames(data_physact2_2019)[3] <- 'age_group'
+colnames(data_physact2_2019)[4] <- 'sex'
+colnames(data_physact2_2019)[5] <- 'race_ethnicity'
+colnames(data_physact2_2019)[6] <- 'fitness_category'
+colnames(data_physact2_2019)[7] <- 'percent'
+data_physact2_2019$state_desc <- tolower(data_physact2_2019$state_desc)
+head(data_physact2_2019)
+```
+
+
+```{r}
+race2 <- c("2 or more races", "American Indian/Alaska Native", "Asian", "Hawaiian/Pacific Islander", "Hispanic", "Non-Hispanic Black", "Non-Hispanic White", "Other")
+data_physact2_2019_inactive_race <- data_physact2_2019 %>% 
+  filter(race_ethnicity %in% race2 & fitness_category == 'Percent of adults who engage in no leisure-time physical activity')
+
+data_inactive_geo_race <- left_join(fifty_states,data_physact2_2019_inactive_race, by='state_desc')
+data_inactive_geo_race <- data_inactive_geo_race %>% drop_na()
+head(data_inactive_geo_race)
+```
+
+
+# From obesity analysis
+risk_demo <- c('Black, non-Hispanic', 'Hispanic', 'Multiracial, non-Hispanic', 'White, non-Hispanic')
+risk_states <- c('OK', 'AL', 'VA', 'SD', 'WI', 'ME', 'WY', 'MS', 'WV', 'IN')
+```{r}
+ggplot() + 
+  geom_polygon(data=data_inactive_geo_race, aes(x=long, y=lat, group = group, fill=percent), color='white') + 
+  scale_size(name="") + 
+  facet_wrap(race_ethnicity~.)+
+  theme_void() +
+  ggtitle('Inactive Adults - Race') + 
+  labs(fill = 'Percent %')
+```
+

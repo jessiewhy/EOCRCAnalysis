@@ -1,0 +1,140 @@
+---
+title: "Test"
+author: "Jessie Huang"
+date: "2024-04-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyr)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(fiftystater)
+library(corrplot)
+```
+
+# ideas
+# get significant increase eo-crc groups and significant decrease eo-crc groups 
+## (Black and Non-hispanic White Males)
+# see which states they are most prevalent in these groups 
+## (OK, WV)
+# for each modifiable risk behavior:
+# filter
+## increase group and decrease group
+## most recent year (most up to date behavior)
+## states of interest (most prevalent of groups of interest)
+## age, sex, race
+## get behaviors these groups are most correlated with (map and test of signficance)
+
+```{r}
+data_bmi <- read.csv('crc/bmi.csv', check.names = FALSE)
+head(data_bmi)
+```
+```{r}
+risk_bmi_groups <- c('Overweight (BMI 25.0-29.9)', 'Obese (BMI 30.0 - 99.8)')
+risk_groups <- c('18-24', '25-34', '35-44', '45-54', 'Black, non-Hispanic', 'White, non-Hispanic', 'Male')
+risk_age_groups <- c('18-24', '25-34', '35-44', '45-54')
+risk_race_groups <- c('Black, non-Hispanic', 'White, non-Hispanic')
+risk_sex_groups <- c('Male')
+risk_states <- c('OK', 'WV', 'LA')
+
+comp_groups <- c('18-24', '25-34', '35-44', '45-54', 'American Indian or Alaskan Native, non-Hispanic', 'Asian, non-Hispanic', 'Hispanic', 'Multiracial, non-Hispanic', 'Native Hawaiian or other Pacific Islander, non-Hispanic', 'Other, non-Hispanic', 'Female')
+lr_race_groups <- c('American Indian or Alaskan Native, non-Hispanic', 'Asian, non-Hispanic', 'Hispanic', 'Multiracial, non-Hispanic', 'Native Hawaiian or other Pacific Islander, non-Hispanic', 'Other, non-Hispanic')
+lr_sex_groups <- c('Female')
+```
+
+```{r}
+risk_bmi_groups <- c('Overweight (BMI 25.0-29.9)', 'Obese (BMI 30.0 - 99.8)')
+risk_groups <- c('18-24', '25-34', '35-44', '45-54', 'Black, non-Hispanic', 'White, non-Hispanic', 'Male')
+risk_age_groups <- c('18-24', '25-34', '35-44', '45-54')
+risk_race_groups <- c('18-24', '25-34', '35-44', '45-54', 'Black, non-Hispanic', 'White, non-Hispanic')
+risk_sex_groups <- c('18-24', '25-34', '35-44', '45-54', 'Male')
+risk_states <- c('LA', 'WV')
+study_states <- c('DC')
+
+lr_groups <- c('18-24', '25-34', '35-44', '45-54', 'American Indian or Alaskan Native, non-Hispanic', 'Asian, non-Hispanic', 'Native Hawaiian or other Pacific Islander, non-Hispanic', 'Female')
+lr_race_groups <- c('18-24', '25-34', '35-44', '45-54', 'American Indian or Alaskan Native, non-Hispanic', 'Asian, non-Hispanic', 'Hispanic', 'Native Hawaiian or other Pacific Islander, non-Hispanic')
+lr_sex_groups <- c('18-24', '25-34', '35-44', '45-54', 'Female')
+
+# vague races: 'Multiracial, non-Hispanic', 'Other, non-Hispanic'
+```
+
+```{r}
+# filter to most recent year
+data_bmi_2022 <- data_bmi %>% 
+  filter(Year == 2022) %>%
+  select(Locationabbr, Locationdesc, Break_Out, Response, Data_value) %>%
+  replace(is.na(.), 0)
+data_bmi_2022
+```
+```{r}
+data("fifty_states")
+colnames(fifty_states)[6] <- 'state_desc'
+colnames(data_bmi_2022)[1] <- 'state_cd'
+colnames(data_bmi_2022)[2] <- 'state_desc'
+data_bmi_2022$state_desc <- tolower(data_bmi_2022$state_desc)
+data_bmi_2022
+```
+```{r}
+data_bmi_risk <- data_bmi_2022 %>% 
+  filter(Break_Out %in% risk_groups & Response %in% risk_bmi_groups) %>%
+  replace(is.na(.), 0)
+```
+
+```{r, warning=FALSE}
+# joins
+data_bmi_risk_geo <- left_join(fifty_states,data_bmi_risk, by='state_desc')
+```
+
+# Visualize
+
+```{r}
+# oklahoma and west virginia highest prevalence of obesity
+ggplot() + 
+  geom_polygon(data=data_bmi_risk_geo, aes(x=long, y=lat, group = group, fill=Data_value),color="white" ) + 
+  scale_size(name="", range = c(2, 5)) +
+  theme_void() +
+  ggtitle('Overweight and/or Obese Adults in the US') + 
+  labs(fill = 'Crude Prevalence %')
+```
+
+# Modeling
+
+```{r}
+data_bmi_2022_2 <- data_bmi_2022 %>%
+  filter(! state_desc %in% c('all states and dc (median) **', 'all states, dc and territories (median) **'))
+
+data_obesity_2022 <- data_bmi_2022_2 %>%
+  filter(Response %in% risk_bmi_groups)
+
+data_bmi_risk_2 <- data_bmi_2022_2 %>%
+  filter(Break_Out %in% risk_groups & state_cd %in% risk_states & Response %in% risk_bmi_groups)
+
+data_bmi_dc <- data_bmi_2022 %>%
+  filter(state_cd %in% 'DC')
+
+data_bmi_risk_dc <- data_bmi_dc %>%
+  filter(Response %in% risk_bmi_groups)
+data_bmi_risk_dc
+```
+
+```{r}
+# the us is a really fat country but
+# dc is interesting, high black (high risk demographic for eo-crc) population yet prevalence of obesity (high risk factor for crc) lowers prevalence of CRC significantly compared to other states, so what are they doing differently?
+mod.fit1 <- lm(Data_value~state_cd, data=data_bmi_risk_2)
+summary(mod.fit1)
+```
+
+
+```{r}
+# the us is too big i think when the data spreads out it's hard to understand what's going on 
+mod.fit2 <- lm(Data_value~Break_Out, data=data_bmi_risk_2)
+summary(mod.fit2)
+```
+
+```{r}
+mod.fit3 <- lm(Data_value~Break_Out, data=data_bmi_risk_dc)
+summary(mod.fit3)
+```

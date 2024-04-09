@@ -1,0 +1,95 @@
+---
+title: "DemographicBehaviorTrends"
+author: "Jessie Huang"
+date: "2024-04-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(fiftystater)
+```
+
+```{r}
+data_bmi <- read.csv('crc/bmi.csv', check.names = FALSE)
+head(data_bmi)
+```
+
+```{r}
+colnames(data_bmi)
+unique(data_bmi$Response)
+sort(unique(data_bmi$Break_Out))
+```
+
+```{r}
+main_groups <- c('18-24', '25-34', '35-44', '45-54', 'American Indian or Alaskan Native, non-Hispanic', 'Asian, non-Hispanic', 'Black, non-Hispanic', 'Hispanic', 'Multiracial, non-Hispanic', 'Native Hawaiian or other Pacific Islander, non-Hispanic', 'Other, non-Hispanic', 'White, non-Hispanic', 'Female', 'Male')
+weight_groups <- c('Overweight (BMI 25.0-29.9)', 'Obese (BMI 30.0 - 99.8)')
+age_groups <- c('18-24', '25-34', '35-44', '45-54')
+race_groups <- c('American Indian or Alaskan Native, non-Hispanic', 'Asian, non-Hispanic', 'Black, non-Hispanic', 'Hispanic', 'Multiracial, non-Hispanic', 'Native Hawaiian or other Pacific Islander, non-Hispanic', 'Other, non-Hispanic', 'White, non-Hispanic')
+sex_groups <- c('Female', 'Male')
+```
+
+```{r}
+data_bmi_filtered <- data_bmi %>% 
+  filter(Year == 2022 & Break_Out %in% main_groups & Response %in% weight_groups) %>%
+  select(Locationabbr, Locationdesc, Break_Out, Response, Data_value) %>%
+  replace(is.na(.), 0)
+data_bmi_filtered
+```
+
+```{r}
+data_bmi_filtered_wide <- data_bmi_filtered %>% 
+  pivot_wider(. ,names_from = Response, values_from = Data_value)
+```
+
+```{r}
+data("fifty_states")
+colnames(fifty_states)[6] <- 'state_desc'
+colnames(data_bmi_filtered)[1] <- 'state_cd'
+colnames(data_bmi_filtered)[2] <- 'state_desc'
+data_bmi_filtered$state_desc <- tolower(data_bmi_filtered$state_desc)
+data_bmi_filtered
+```
+
+```{r, warning=FALSE}
+# joins
+bmi_geo_data <- left_join(fifty_states,data_bmi_filtered, by='state_desc')
+head(bmi_geo_data)
+```
+# age
+
+```{r}
+bmi_geo_age_data <- bmi_geo_data %>%
+  filter(Break_Out %in% age_groups ) 
+# %>%arrange(desc(Data_value))
+# bmi_geo_age_data %>% 
+  # group_by(state_desc) %>%
+  # arrange(desc(Data_value))
+```
+
+```{r}
+# oklahoma, arkansas, mississippi, louisiana, west virginia, kentucky
+ggplot() + 
+  geom_polygon(data=bmi_geo_age_data, aes(x=long, y=lat, group = group, fill=Data_value),color="white" ) + 
+  scale_size(name="", range = c(2, 5)) + 
+  facet_wrap(Break_Out~.)+
+  theme_void() +
+  ggtitle('Overweight and/or Obese Adults in the US') + 
+  labs(fill = 'Crude Prevalence %')
+```
+```{r}
+bmi_geo_age_data_OK <- bmi_geo_age_data %>%
+  filter(state_cd == 'OK')
+head(bmi_geo_age_data_OK)
+```
+
+```{r}
+geom_obj <- us_map(regions = 'states')
+colnames(geom_obj)[2] <- 'state_cd'
+geom_obj
+data_risk_demo_geo2 <- left_join(geom_obj,data_risk_demo_geo, by='state_cd')
+data_risk_demo_geo2
+```
