@@ -49,7 +49,6 @@ colnames(data_physact_q1)[3] <- 'state_desc'
 colnames(data_physact_q1)[4] <- 'demographic'
 colnames(data_physact_q1)[5] <- 'Response'
 colnames(data_physact_q1)[6] <- 'CrudePrevalence'
-data_physact_q1
 
 data_physact_q1$CrudePrevalence <- ifelse(data_physact_q1$CrudePrevalence!=0.0, data_physact_q1$CrudePrevalence/100, 0.0)
 data_physact_q1$Year <- as.factor(data_physact_q1$Year)
@@ -158,24 +157,52 @@ data_physact2_2019$state_desc <- tolower(data_physact2_2019$state_desc)
 head(data_physact2_2019)
 ```
 
-
 ```{r}
-race2 <- c("2 or more races", "American Indian/Alaska Native", "Asian", "Hawaiian/Pacific Islander", "Hispanic", "Non-Hispanic Black", "Non-Hispanic White", "Other")
-data_physact2_2019_inactive_race <- data_physact2_2019 %>% 
-  filter(race_ethnicity %in% race2 & fitness_category == 'Percent of adults who engage in no leisure-time physical activity')
+age_levels <- c('18 - 24', '25 - 34', '35 - 44', '45 - 54')
+sex_levels <- c('Female', 'Male')
+race_levels <- c("2 or more races", "American Indian/Alaska Native", "Asian", "Hawaiian/Pacific Islander", "Hispanic", "Non-Hispanic Black", "Non-Hispanic White", "Other")
 
-data_inactive_geo_race2 <- left_join(fifty_states,data_physact2_2019_inactive_race, by='state_desc')
-data_inactive_geo_race2 <- data_inactive_geo_race2 %>% drop_na()
-head(data_inactive_geo_race)
+data_inactive_geo_2019 <- left_join(fifty_states,data_physact2_2019, by='state_desc')
+```
+```{r}
+data_nutrition_geo_age <- data_inactive_geo_2019 %>%
+  filter(age_group %in% age_levels)
+
+data_nutrition_geo_sex <- data_inactive_geo_2019 %>%
+  filter(sex %in% sex_levels)
+
+data_nutrition_geo_race <- data_inactive_geo_2019 %>%
+  filter(race_ethnicity %in% race_levels)
 ```
 
+# age
+```{r}
+ggplot() + 
+  geom_polygon(data=data_nutrition_geo_age, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  scale_size(name="") + 
+  facet_wrap(age_group~.)+
+  theme_void() +
+  # ggtitle('Inactive Adults - Race') + 
+  labs(fill = 'Percent %')
+```
+# sex
+```{r, fig.height=5, fig.width=5}
+ggplot() + 
+  geom_polygon(data=data_nutrition_geo_sex, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  scale_size(name="") + 
+  facet_grid(sex~.)+
+  theme_void() +
+  # ggtitle('Inactive Adults - Race') + 
+  labs(fill = 'Percent %')
+```
 
-# From obesity analysis
+# race
+from obesity analysis:
 Races: American Indian/Alaska Native, Black, non-Hispanic, Hispanic, Multiracial, non-Hispanic, White, non-Hispanic
 risk_states <- c('OK', 'AL', 'VA', 'SD', 'WI', 'ME', 'WY', 'MS', 'WV', 'IN')
 ```{r}
 ggplot() + 
-  geom_polygon(data=data_inactive_geo_race2, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  geom_polygon(data=data_nutrition_geo_race, aes(x=long, y=lat, group = group, fill=percent), color='white') +
   scale_size(name="") + 
   facet_wrap(race_ethnicity~.)+
   theme_void() +
