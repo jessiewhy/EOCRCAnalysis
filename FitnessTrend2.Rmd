@@ -200,7 +200,7 @@ ggplot() +
 ggplot() + 
   geom_polygon(data=data_inactive_geo_sex, aes(x=long, y=lat, group = group, fill=percent), color='white') +
   scale_size(name="") + 
-  facet_grid(sex~.)+
+  facet_grid(sex~., switch='both')+
   theme_void() +
   # ggtitle('Inactive Adults - Race') + 
   labs(fill = 'Percent %')
