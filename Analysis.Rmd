@@ -312,8 +312,6 @@ data_physact_q1$state_cd <- as.factor(data_physact_q1$state_cd)
 data_physact_q1$demographic <- as.factor(data_physact_q1$demographic)
 data_physact_q1$Response <- as.factor(data_physact_q1$Response)
 data_physact_q1$state_desc <- tolower(data_physact_q1$state_desc)
-data_physact_q1
-head(data_physact_q1)
 ```
 
 ```{r}
