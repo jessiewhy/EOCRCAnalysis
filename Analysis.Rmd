@@ -19,7 +19,7 @@ library(ggplot2)
 
 ```{r}
 data_bmi <- read.csv('crc/bmi.csv', check.names = FALSE)
-head(data_bmi)
+data_npo <- read.csv('crc/nutrition-physicalactivity-obesity.csv', check.names = FALSE)
 ```
 
 ```{r}
@@ -152,5 +152,86 @@ ggplot(data_risk_demo_geo, aes(x=reorder(state_desc, CrudePrevalence), y=CrudePr
 ```
 
 # Nutrition
+
+## Data Cleaning
+Not much data, will have to go off who isn't eating daily fruits and vegetables....
+```{r}
+data_nutrition <- data_npo %>% filter(Class == 'Fruits and Vegetables')
+
+data_nutrition_filtered <- data_nutrition %>% 
+  select(YearEnd, LocationAbbr, LocationDesc,
+         `Age(years)`,Gender,`Race/Ethnicity`,
+         Question, Data_Value)
+head(data_nutrition_filtered)
+```
+
+
+```{r}
+colnames(data_nutrition_filtered)[1] <- 'Year'
+colnames(data_nutrition_filtered)[2] <- 'state_cd'
+colnames(data_nutrition_filtered)[3] <- 'state_desc'
+colnames(data_nutrition_filtered)[4] <- 'age'
+colnames(data_nutrition_filtered)[5] <- 'sex'
+colnames(data_nutrition_filtered)[6] <- 'race_ethnicity'
+colnames(data_nutrition_filtered)[7] <- 'diet_cat'
+colnames(data_nutrition_filtered)[8] <- 'percent'
+
+data_nutrition_filtered$state_desc <- tolower(data_nutrition_filtered$state_desc)
+data_nutrition_filtered$Year <- as.factor(data_nutrition_filtered$Year)
+data_nutrition_filtered$state_cd <- as.factor(data_nutrition_filtered$state_cd)
+data_nutrition_filtered$state_desc <- as.factor(data_nutrition_filtered$state_desc)
+data_nutrition_filtered$age <- as.factor(data_nutrition_filtered$age)
+data_nutrition_filtered$sex <- as.factor(data_nutrition_filtered$sex)
+data_nutrition_filtered$race_ethnicity <- as.factor(data_nutrition_filtered$race_ethnicity)
+data_nutrition_filtered$diet_cat <- as.factor(data_nutrition_filtered$diet_cat)
+data_nutrition_filtered$percent <- ifelse(data_nutrition_filtered$percent!=0.0, data_nutrition_filtered$percent/100, 0.0)
+
+head(data_nutrition_filtered)
+```
+
+```{r}
+age_levels <- c('18 - 24', '25 - 34', '35 - 44', '45 - 54')
+sex_levels <- c('Female', 'Male')
+race_levels <- c("2 or more races", "American Indian/Alaska Native", "Asian", "Hawaiian/Pacific Islander", "Hispanic", "Non-Hispanic Black", "Non-Hispanic White", "Other")
+
+data_nutrition_age <- data_nutrition_filtered %>% 
+  filter(age %in% age_levels)
+
+data_nutrition_sex <- data_nutrition_filtered %>% 
+  filter(sex %in% sex_levels)
+
+data_nutrition_race <- data_nutrition_filtered %>% 
+  filter(race_ethnicity %in% race_levels)
+```
+
+## Age Model
+
+```{r}
+# more younger not eating at least 1 fruit or 1 veg a day
+mod.fit.nutrition.age <- lm(percent ~ age, data=data_nutrition_age)
+summary(mod.fit.nutrition.age)
+plot(mod.fit.nutrition.age)
+```
+
+## Sex Model
+
+```{r}
+# more male not eating at least 1 fruit or 1 veg a day
+mod.fit.nutrition.sex <- lm(percent ~ sex, data=data_nutrition_sex)
+summary(mod.fit.nutrition.sex)
+plot(mod.fit.nutrition.sex)
+```
+
+## Race Model
+
+```{r}
+# less likely to respond to not eat at least 1 fruit or 1 veg a day: asian, white, other
+# more likely to respond to not eat at least 1 fruit or 1 veg a day: 2 or more races, american indian or alaska native, hawaiian/pacific islander, hispanic, black
+mod.fit.nutrition.race <- lm(percent ~ race_ethnicity, data=data_nutrition_race)
+summary(mod.fit.nutrition.race)
+plot(mod.fit.nutrition.race)
+```
+
+## Visualizations
 
 # Fitness
