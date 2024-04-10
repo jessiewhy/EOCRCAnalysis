@@ -234,4 +234,52 @@ plot(mod.fit.nutrition.race)
 
 ## Visualizations
 
+```{r}
+# 2019 most recent data for diet questions
+data_nutrition_2019 <- data_nutrition_filtered %>% 
+  filter(Year == 2019 & state_cd != 'US')
+
+data_nutrition_geo_2019 <- left_join(fifty_states,data_nutrition_2019, by='state_desc')
+
+data_nutrition_geo_age <- data_nutrition_geo_2019 %>%
+  filter(age %in% age_levels)
+data_nutrition_geo_sex <- data_nutrition_geo_2019 %>%
+  filter(sex %in% sex_levels)
+data_nutrition_geo_race <- data_nutrition_geo_2019 %>%
+  filter(race_ethnicity %in% race_levels)
+```
+
+### Age
+
+```{r}
+ggplot() + 
+  geom_polygon(data=data_nutrition_geo_age, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  scale_size(name="") + 
+  facet_wrap(age~.)+
+  theme_void() +
+  labs(fill = 'Percent %')
+```
+
+### Sex
+
+```{r, fig.width=5, fig.height=5}
+ggplot() + 
+  geom_polygon(data=data_nutrition_geo_sex, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  scale_size(name="") + 
+  facet_grid(sex~.)+
+  theme_void() +
+  labs(fill = 'Percent %')
+```
+
+### Race
+
+```{r}
+ggplot() + 
+  geom_polygon(data=data_nutrition_geo_race, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  scale_size(name="") + 
+  facet_wrap(race_ethnicity~.)+
+  theme_void() +
+  labs(fill = 'Percent %')
+```
+
 # Fitness
