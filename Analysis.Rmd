@@ -20,6 +20,7 @@ library(ggplot2)
 ```{r}
 data_bmi <- read.csv('crc/bmi.csv', check.names = FALSE)
 data_npo <- read.csv('crc/nutrition-physicalactivity-obesity.csv', check.names = FALSE)
+data_physact <- read.csv('crc/physicalactivity.csv', check.names = FALSE)
 ```
 
 ```{r}
@@ -27,18 +28,22 @@ data('fifty_states')
 colnames(fifty_states)[6] <- 'state_desc'
 ```
 
-# Obesity
-
-## Data Cleaning
-
 ```{r}
 # EO-CRC rising in all races (especially White and Black) and males
 risk_bmi_groups <- c('Obese (BMI 30.0 - 99.8)')
-demographics <- c('18-24', '25-34', '35-44', '45-54', 'Black, non-Hispanic', 'White, non-Hispanic', 'American Indian or Alaskan Native, non-Hispanic', 'Asian, non-Hispanic', 'Native Hawaiian or other Pacific Islander, non-Hispanic', 'Multiracial, non-Hispanic', 'Other, non-Hispanic', 'Hispanic', 'Male')
+demographics <- c('18-24', '25-34', '35-44', '45-54', 'Black, non-Hispanic', 'White, non-Hispanic', 'American Indian or Alaskan Native, non-Hispanic', 'Asian, non-Hispanic', 'Native Hawaiian or other Pacific Islander, non-Hispanic', 'Multiracial, non-Hispanic', 'Other, non-Hispanic', 'Hispanic', 'Female', 'Male')
 race <- c('Black, non-Hispanic', 'White, non-Hispanic', 'American Indian or Alaskan Native, non-Hispanic', 'Asian, non-Hispanic', 'Native Hawaiian or other Pacific Islander, non-Hispanic', 'Multiracial, non-Hispanic', 'Other, non-Hispanic', 'Hispanic')
 age <- c('18-24', '25-34', '35-44', '45-54')
 sex <- c('Female', 'Male')
+
+age_levels <- c('18 - 24', '25 - 34', '35 - 44', '45 - 54')
+sex_levels <- c('Female', 'Male')
+race_levels <- c("2 or more races", "American Indian/Alaska Native", "Asian", "Hawaiian/Pacific Islander", "Hispanic", "Non-Hispanic Black", "Non-Hispanic White", "Other")
 ```
+
+# Obesity
+
+## Data Cleaning
 
 ```{r}
 data_bmi_clean <- data_bmi %>% 
@@ -190,10 +195,6 @@ head(data_nutrition_filtered)
 ```
 
 ```{r}
-age_levels <- c('18 - 24', '25 - 34', '35 - 44', '45 - 54')
-sex_levels <- c('Female', 'Male')
-race_levels <- c("2 or more races", "American Indian/Alaska Native", "Asian", "Hawaiian/Pacific Islander", "Hispanic", "Non-Hispanic Black", "Non-Hispanic White", "Other")
-
 data_nutrition_age <- data_nutrition_filtered %>% 
   filter(age %in% age_levels)
 
@@ -283,3 +284,179 @@ ggplot() +
 ```
 
 # Fitness
+
+## Data Cleaning
+CDC Guidelines:
+Adults (18-64 years): At least 150 minutes a week of moderate intensity activity such as brisk walking. At least 2 days a week of activities that strengthen muscles. Aim for the recommended activity level but be as active as you are able.
+
+```{r}
+# adults who meet cdc criteria for activity
+data_physact_q1 <- data_physact %>% 
+  filter(Question == 'Participated in enough Aerobic and Muscle Strengthening exercises to meet guidelines (variable calculated from one or more BRFSS questions)') %>%
+  select(Year, Locationabbr, Locationdesc, Break_Out, Response, Data_value) %>% 
+  replace(is.na(.), 0)
+head(data_physact_q1)
+```
+
+```{r}
+colnames(data_physact_q1)[1] <- 'Year'
+colnames(data_physact_q1)[2] <- 'state_cd'
+colnames(data_physact_q1)[3] <- 'state_desc'
+colnames(data_physact_q1)[4] <- 'demographic'
+colnames(data_physact_q1)[5] <- 'Response'
+colnames(data_physact_q1)[6] <- 'CrudePrevalence'
+
+data_physact_q1$CrudePrevalence <- ifelse(data_physact_q1$CrudePrevalence!=0.0, data_physact_q1$CrudePrevalence/100, 0.0)
+data_physact_q1$Year <- as.factor(data_physact_q1$Year)
+data_physact_q1$state_cd <- as.factor(data_physact_q1$state_cd)
+data_physact_q1$demographic <- as.factor(data_physact_q1$demographic)
+data_physact_q1$Response <- as.factor(data_physact_q1$Response)
+data_physact_q1$state_desc <- tolower(data_physact_q1$state_desc)
+data_physact_q1
+head(data_physact_q1)
+```
+
+```{r}
+data_physact_q1_2019 <- data_physact_q1 %>%
+  filter(Year==2019)
+
+data_physact_inactive <- data_physact_q1_2019 %>% 
+  filter(demographic %in% demographics & Response == 'No') %>%
+  replace(is.na(.), 0)
+data_physact_inactive_age <- data_physact_inactive %>% 
+  filter(demographic %in% age) %>%
+  replace(is.na(.), 0)
+data_physact_inactive_sex <- data_physact_inactive %>% 
+  filter(demographic %in% sex) %>%
+  replace(is.na(.), 0)
+data_physact_inactive_race <- data_physact_inactive %>% 
+  filter(demographic %in% race) %>%
+  replace(is.na(.), 0)
+
+```
+
+## Age Model
+
+```{r}
+# all age groups not meeting CDC guidelines for fitness but gets worse with older groups
+mod.fit.inactive.age <- lm(CrudePrevalence ~ demographic, data=data_physact_inactive_age)
+summary(mod.fit.inactive.age)
+plot(mod.fit.inactive.age)
+```
+
+## Sex Model
+
+```{r}
+# males more likely to abide to CDC guidelines for fitness
+mod.fit.inactive.sex <- lm(CrudePrevalence ~ demographic, data=data_physact_inactive_sex)
+summary(mod.fit.inactive.sex)
+plot(mod.fit.inactive.sex)
+```
+
+## Race Model
+
+```{r}
+# more likely to abide to CDC guidelines for fitness: asian, pacific islander (i suspect lack of data for significant decrease), and other
+# less likely to abide to CDC guidelines for fitness: american indian/alaskan native, black, hispanic, multiracial, white
+mod.fit.inactive.race <- lm(CrudePrevalence ~ demographic, data=data_physact_inactive_race)
+summary(mod.fit.inactive.race)
+plot(mod.fit.inactive.race)
+```
+
+## Visualizations
+
+```{r}
+data_inactive_geo_race <- left_join(fifty_states,data_physact_inactive_race, by='state_desc')
+data_inactive_geo_race <- data_inactive_geo_race %>% drop_na()
+head(data_inactive_geo_race)
+
+data_physact2 <- data_npo %>% filter(Class == 'Physical Activity')
+```
+
+```{r}
+# 2019 most recent data for activity questions
+data_physact2_2019 <- data_physact2 %>% 
+  filter(YearEnd == 2019) %>%
+  select(LocationAbbr, LocationDesc, 'Age(years)', Gender, 'Race/Ethnicity', Question, Data_Value) %>%
+  replace(is.na(.), 0)
+head(data_physact2_2019)
+```
+
+```{r}
+colnames(data_physact2_2019)[1] <- 'state_cd'
+colnames(data_physact2_2019)[2] <- 'state_desc'
+colnames(data_physact2_2019)[3] <- 'age_group'
+colnames(data_physact2_2019)[4] <- 'sex'
+colnames(data_physact2_2019)[5] <- 'race_ethnicity'
+colnames(data_physact2_2019)[6] <- 'fitness_category'
+colnames(data_physact2_2019)[7] <- 'percent'
+data_physact2_2019$state_desc <- tolower(data_physact2_2019$state_desc)
+head(data_physact2_2019)
+```
+
+```{r}
+age_levels <- c('18 - 24', '25 - 34', '35 - 44', '45 - 54')
+sex_levels <- c('Female', 'Male')
+race_levels <- c("2 or more races", "American Indian/Alaska Native", "Asian", "Hawaiian/Pacific Islander", "Hispanic", "Non-Hispanic Black", "Non-Hispanic White", "Other")
+
+data_inactive_geo_2019 <- left_join(fifty_states,data_physact2_2019, by='state_desc')
+
+data_nutrition_geo_age <- data_inactive_geo_2019 %>%
+  filter(age_group %in% age_levels)
+
+data_nutrition_geo_sex <- data_inactive_geo_2019 %>%
+  filter(sex %in% sex_levels)
+
+data_nutrition_geo_race <- data_inactive_geo_2019 %>%
+  filter(race_ethnicity %in% race_levels)
+```
+
+```{r}
+ggplot() + 
+  geom_polygon(data=data_inactive_geo_race, aes(x=long, y=lat, group = group, fill=CrudePrevalence), color='white') + 
+  scale_size(name="") + 
+  facet_wrap(demographic~.)+
+  theme_void() +
+  ggtitle('Inactive Adults - Race') + 
+  labs(fill = 'Crude Prevalence %')
+```
+
+
+### Age
+
+```{r}
+ggplot() + 
+  geom_polygon(data=data_nutrition_geo_age, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  scale_size(name="") + 
+  facet_wrap(age_group~.)+
+  theme_void() +
+  # ggtitle('Inactive Adults - Race') + 
+  labs(fill = 'Percent %')
+```
+
+### Sex
+
+```{r, fig.height=5, fig.width=5}
+ggplot() + 
+  geom_polygon(data=data_nutrition_geo_sex, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  scale_size(name="") + 
+  facet_grid(sex~.)+
+  theme_void() +
+  # ggtitle('Inactive Adults - Race') + 
+  labs(fill = 'Percent %')
+```
+
+### Race
+
+from obesity analysis:
+Races: American Indian/Alaska Native, Black, non-Hispanic, Hispanic, Multiracial, non-Hispanic, White, non-Hispanic
+risk_states <- c('OK', 'AL', 'VA', 'SD', 'WI', 'ME', 'WY', 'MS', 'WV', 'IN')
+```{r}
+ggplot() + 
+  geom_polygon(data=data_nutrition_geo_race, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  scale_size(name="") + 
+  facet_wrap(race_ethnicity~.)+
+  theme_void() +
+  # ggtitle('Inactive Adults - Race') + 
+  labs(fill = 'Percent %')
+```
