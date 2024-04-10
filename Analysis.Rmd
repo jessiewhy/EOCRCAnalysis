@@ -18,9 +18,13 @@ library(ggplot2)
 # Data Sources
 
 ```{r}
-data('fifty_states')
 data_bmi <- read.csv('crc/bmi.csv', check.names = FALSE)
 head(data_bmi)
+```
+
+```{r}
+data('fifty_states')
+colnames(fifty_states)[6] <- 'state_desc'
 ```
 
 # Obesity
@@ -116,6 +120,36 @@ plot(mod.fit.race2)
 ```
 
 ## Visualizations
+
+```{r}
+# filter to most recent year for most recent behavior
+data_bmi_clean_2022 <- data_bmi_clean %>% 
+  filter(Year==2022)
+head(data_bmi_clean_2022)
+```
+
+```{r, warning=FALSE}
+risk_demo <- c('American Indian or Alaskan Native, non-Hispanic', 'Black, non-Hispanic', 'Hispanic', 'Multiracial, non-Hispanic', 'White, non-Hispanic')
+data_risk_demo <- data_bmi_clean_2022 %>%
+    group_by(state_desc, demographic) %>%
+    filter(demographic %in% risk_demo & BMI %in% risk_bmi_groups) %>%
+    arrange(desc(CrudePrevalence))
+head(data_risk_demo)
+
+# joins
+data_risk_demo_geo <- left_join(fifty_states,data_risk_demo, by='state_desc')
+head(data_risk_demo_geo)
+```
+
+```{r, fig.height=6}
+ggplot(data_risk_demo_geo, aes(x=reorder(state_desc, CrudePrevalence), y=CrudePrevalence, color=demographic)) +
+  geom_point() +
+  geom_segment(aes(x=state_desc, xend=state_desc, y=0, yend=CrudePrevalence)) +
+  coord_flip() +
+  theme_classic() +
+  # ggtitle('Obesity Prevalence by Race and US State (2022)') + 
+  labs(x = 'State', y = 'Crude Prevalence %', color='Demographic') 
+```
 
 # Nutrition
 
