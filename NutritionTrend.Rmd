@@ -21,14 +21,13 @@ data_npo <- read.csv('crc/nutrition-physicalactivity-obesity.csv', check.names =
 
 data_nutrition <- data_npo %>% filter(Class == 'Fruits and Vegetables')
 
-data_nutrition_filtered <- data_nutrition %>% select(YearEnd, LocationAbbr, LocationDesc,
-                                                     `Age(years)`,Gender,`Race/Ethnicity`, 
-                                                     Question, Data_Value)
+data_nutrition_filtered <- data_nutrition %>% 
+  select(YearEnd, LocationAbbr, LocationDesc,
+  `Age(years)`,Gender,`Race/Ethnicity`,
+  Question, Data_Value)
 head(data_nutrition_filtered)
 ```
-```{r}
 
-```
 
 ```{r}
 colnames(data_nutrition_filtered)[1] <- 'Year'
@@ -87,6 +86,7 @@ mod.fit.diet.sex <- lm(percent ~ sex, data=data_nutrition_sex)
 summary(mod.fit.diet.sex)
 plot(mod.fit.inactive.sex)
 ```
+
 # race
 ```{r}
 # less likely to respond to not eat at least 1 fruit or 1 veg a day: asian, white, other
@@ -103,50 +103,55 @@ plot(mod.fit.diet.race)
 # 2019 most recent data for diet questions
 data_nutrition_2019 <- data_nutrition_filtered %>% 
   filter(Year == 2019 & state_cd != 'US')
-head(data_nutrition_2019)
 
 data_nutrition_geo_2019 <- left_join(fifty_states,data_nutrition_2019, by='state_desc')
 ```
-# age
 
 ```{r}
 data_nutrition_geo_age <- data_nutrition_geo_2019 %>%
   filter(age %in% age_levels)
+
+data_nutrition_geo_sex <- data_nutrition_geo_2019 %>%
+  filter(sex %in% sex_levels)
+
+data_nutrition_geo_race <- data_nutrition_geo_2019 %>%
+  filter(race_ethnicity %in% race_levels)
 ```
 
+
+# age
+
 ```{r}
-ggplot() + 
+data_nutrition_geo_age_wwv <- data_nutrition_geo_age %>%
+  filter(state_cd %in% c('WI', 'WY', 'WV', 'VA'))
+p <- ggplot() + 
   geom_polygon(data=data_nutrition_geo_age, aes(x=long, y=lat, group = group, fill=percent), color='white') +
   scale_size(name="") + 
   facet_wrap(age~.)+
   theme_void() +
   # ggtitle('Inactive Adults - Race') + 
   labs(fill = 'Percent %')
+p + geom_polygon(data=data_nutrition_geo_age_wwv, aes(x=long, y=lat, group = group, fill=percent, color=state_desc), size=1) + 
+  labs(color = 'State')
 ```
 
 # sex
 
-```{r}
-data_nutrition_geo_sex <- data_nutrition_geo_2019 %>%
-  filter(sex %in% sex_levels)
-```
-
 ```{r, fig.width=5, fig.height=5}
-ggplot() + 
+data_nutrition_geo_sex_wwv <- data_nutrition_geo_sex %>%
+  filter(state_cd %in% c('WY', 'NV'))
+p <- ggplot() + 
   geom_polygon(data=data_nutrition_geo_sex, aes(x=long, y=lat, group = group, fill=percent), color='white') +
   scale_size(name="") + 
   facet_grid(sex~.)+
   theme_void() +
   # ggtitle('Inactive Adults - Race') + 
   labs(fill = 'Percent %')
+p + geom_polygon(data=data_nutrition_geo_sex_wwv, aes(x=long, y=lat, group = group, fill=percent, color=state_desc), size=1) +
+  labs(color = 'State')
 ```
 
 # race
-
-```{r}
-data_nutrition_geo_race <- data_nutrition_geo_2019 %>%
-  filter(race_ethnicity %in% race_levels)
-```
 
 ```{r}
 ggplot() + 
@@ -157,4 +162,30 @@ ggplot() +
   # ggtitle('Inactive Adults - Race') + 
   labs(fill = 'Percent %')
 ```
+
+# state trends by age and sex
+
+age
+18-24: nevada, georgia, new mexico, oklahoma, wyoming
+25 - 34: nevada, mississippi, arkansas, alabama, kentucky
+35 - 44: oklahoma, louisiana, west virginia, kentucky, north dakota
+45 - 54: mississippi, oklahoma, louisiana, west virgina, kentucky
+
+```{r}
+data_nutrition_geo_age %>%
+  select(state_desc, age, percent) %>%
+  group_by(state_desc, age, percent) %>%
+  arrange(desc(percent)) %>%
+  filter(age == '45 - 54') %>%
+  distinct()
+```
+```{r}
+data_nutrition_geo_sex %>%
+  select(state_desc, age, percent) %>%
+  group_by(state_desc, age, percent) %>%
+  arrange(desc(percent)) %>%
+  filter(age == '45 - 54') %>%
+  distinct()
+```
+
 
