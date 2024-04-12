@@ -11,6 +11,7 @@ library(fiftystater)
 library(tidyverse)
 library(dplyr)
 library(ggplot2)
+library(betareg)
 ```
 
 # Analysis
@@ -82,6 +83,12 @@ data_bmi_race_risk <- data_bmi_clean %>%
   filter(demographic %in% race & BMI %in% risk_bmi_groups)
 ```
 
+```{r}
+hist(data_bmi_age_risk$CrudePrevalence)
+hist(data_bmi_sex_risk$CrudePrevalence)
+hist(data_bmi_race_risk$CrudePrevalence)
+```
+
 ## Age Model
 
 ```{r}
@@ -90,8 +97,9 @@ data_bmi_race_risk <- data_bmi_clean %>%
 # 45-54's in year 2021 was significant year of increase
 mod.fit.age <- lm(CrudePrevalence ~ Year + demographic + Year*demographic, data=data_bmi_age_risk)
 summary(mod.fit.age)
-plot(mod.fit.age)
+# plot(mod.fit.age)
 ```
+
 
 ## Sex Model
 
@@ -111,7 +119,7 @@ plot(mod.fit.sex)
 # unclear, lot of missing data throughout the year of races, removing year for overall picture then. 
 mod.fit.race <- lm(CrudePrevalence ~ Year + demographic + Year*demographic, data=data_bmi_race_risk)
 summary(mod.fit.race)
-plot(mod.fit.race)
+# plot(mod.fit.race)
 ```
 
 # Only Race
@@ -194,6 +202,7 @@ data_nutrition_filtered$percent <- ifelse(data_nutrition_filtered$percent!=0.0, 
 head(data_nutrition_filtered)
 ```
 
+
 ```{r}
 data_nutrition_age <- data_nutrition_filtered %>% 
   filter(age %in% age_levels)
@@ -205,13 +214,36 @@ data_nutrition_race <- data_nutrition_filtered %>%
   filter(race_ethnicity %in% race_levels)
 ```
 
+```{r}
+hist(data_nutrition_age$percent)
+hist(data_nutrition_sex$percent)
+hist(data_nutrition_race$percent)
+```
+
 ## Age Model
 
-```{r}
+Going with beta distribution
+- response variable distribution
+- response is continuous probability between 0 and 1
+- link: logit
+
+interpret coefficients as odds:
+https://stats.stackexchange.com/questions/442789/interpretation-of-the-beta-regression-coefficients-with-logit-link-used-to-analy
+
+```{r, warning=FALSE}
 # more younger not eating at least 1 fruit or 1 veg a day
-mod.fit.nutrition.age <- lm(percent ~ age, data=data_nutrition_age)
+# Fit beta regression model
+mod.fit.nutrition.age <- betareg(percent ~ age, link = "logit", data = data_nutrition_age)
 summary(mod.fit.nutrition.age)
-plot(mod.fit.nutrition.age)
+```
+
+```{r}
+plot(mod.fit.nutrition.age, which=1) # check link appropriateness... constant variance here
+plot(mod.fit.nutrition.age, which=2) # checking for outliers
+plot(mod.fit.nutrition.age, which=4) # minor heteroskedasticity
+# hist(mod.fit.nutrition.age$residuals) # wouldn't expect perfect normal distribution with beta distribution
+qqnorm(residuals(mod.fit.nutrition.age, type = "sweighted2"))
+qqline(residuals(mod.fit.nutrition.age, type = "sweighted2"))
 ```
 
 ## Sex Model
@@ -223,14 +255,45 @@ summary(mod.fit.nutrition.sex)
 plot(mod.fit.nutrition.sex)
 ```
 
+```{r, warning=FALSE}
+# more younger not eating at least 1 fruit or 1 veg a day
+mod.fit.nutrition.sex <- betareg(percent ~ sex, link = "logit", data = data_nutrition_sex)
+summary(mod.fit.nutrition.sex)
+```
+
+```{r}
+plot(mod.fit.nutrition.sex, which=1) # check link appropriateness... constant variance here
+plot(mod.fit.nutrition.sex, which=2) # checking for outliers
+# plot(mod.fit.nutrition.sex, which=4) # minor heteroskedasticity
+hist(mod.fit.nutrition.sex$residuals) # wouldn't expect perfect normal distribution with beta distribution
+qqnorm(residuals(mod.fit.nutrition.sex, type = "sweighted2"))
+qqline(residuals(mod.fit.nutrition.sex, type = "sweighted2"))
+```
+
 ## Race Model
 
 ```{r}
 # less likely to respond to not eat at least 1 fruit or 1 veg a day: asian, white, other
 # more likely to respond to not eat at least 1 fruit or 1 veg a day: 2 or more races, american indian or alaska native, hawaiian/pacific islander, hispanic, black
-mod.fit.nutrition.race <- lm(percent ~ race_ethnicity, data=data_nutrition_race)
+mod.fit.nutrition.race_old <- lm(percent ~ race_ethnicity, data=data_nutrition_race)
+summary(mod.fit.nutrition.race_old)
+plot(mod.fit.nutrition.race_old)
+```
+
+```{r, warning=FALSE}
+# less likely to respond to not eat at least 1 fruit or 1 veg a day: asian, white, other
+# more likely to respond to not eat at least 1 fruit or 1 veg a day: 2 or more races, american indian or alaska native, hawaiian/pacific islander, hispanic, black
+mod.fit.nutrition.race <- betareg(percent ~ race_ethnicity, link = "logit", data = data_nutrition_race)
 summary(mod.fit.nutrition.race)
-plot(mod.fit.nutrition.race)
+```
+
+```{r}
+plot(mod.fit.nutrition.race, which=1) # check link appropriateness... constant variance here
+plot(mod.fit.nutrition.race, which=2) # checking for outliers
+# plot(mod.fit.nutrition.race, which=4) # minor heteroskedasticity
+hist(mod.fit.nutrition.race$residuals) # wouldn't expect perfect normal distribution with beta distribution
+qqnorm(residuals(mod.fit.nutrition.race, type = "sweighted2"))
+qqline(residuals(mod.fit.nutrition.race, type = "sweighted2"))
 ```
 
 ## Visualizations
@@ -330,7 +393,13 @@ data_physact_inactive_sex <- data_physact_inactive %>%
 data_physact_inactive_race <- data_physact_inactive %>% 
   filter(demographic %in% race) %>%
   replace(is.na(.), 0)
+head(data_physact_inactive_age)
+```
 
+```{r}
+hist(data_physact_inactive_age$CrudePrevalence)
+hist(data_physact_inactive_age$CrudePrevalence)
+hist(data_physact_inactive_age$CrudePrevalence)
 ```
 
 ## Age Model
