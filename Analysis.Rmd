@@ -30,6 +30,7 @@ colnames(fifty_states)[6] <- 'state_desc'
 ```
 
 ```{r}
+head(data_bmi)
 # EO-CRC rising in all races (especially White and Black) and males
 risk_bmi_groups <- c('Obese (BMI 30.0 - 99.8)')
 demographics <- c('18-24', '25-34', '35-44', '45-54', 'Black, non-Hispanic', 'White, non-Hispanic', 'American Indian or Alaskan Native, non-Hispanic', 'Asian, non-Hispanic', 'Native Hawaiian or other Pacific Islander, non-Hispanic', 'Multiracial, non-Hispanic', 'Other, non-Hispanic', 'Hispanic', 'Female', 'Male')
@@ -47,18 +48,20 @@ race_levels <- c("2 or more races", "American Indian/Alaska Native", "Asian", "H
 ## Data Cleaning
 
 ```{r}
+# data_bmi %>% filter(is.na(Data_value))
 data_bmi_clean <- data_bmi %>% 
+  select(Year, Locationabbr, Locationdesc, Break_Out, Response, Data_value) %>%
+  filter(! is.na(Data_value))
+
+data_bmi_viz <- data_bmi %>% 
   select(Year, Locationabbr, Locationdesc, Break_Out, Response, Data_value) %>%
   replace(is.na(.), 0)
 head(data_bmi_clean)
 ```
 
 ```{r}
-colnames(data_bmi_clean)[2] <- 'state_cd'
-colnames(data_bmi_clean)[3] <- 'state_desc'
-colnames(data_bmi_clean)[4] <- 'demographic'
-colnames(data_bmi_clean)[5] <- 'BMI'
-colnames(data_bmi_clean)[6] <- 'CrudePrevalence'
+colnames(data_bmi_clean) <- c('Year', 'state_cd', 'state_desc', 'demographic', 'BMI', 'CrudePrevalence')
+colnames(data_bmi_viz) <- c('Year', 'state_cd', 'state_desc', 'demographic', 'BMI', 'CrudePrevalence')
 
 data_bmi_clean$CrudePrevalence <- ifelse(data_bmi_clean$CrudePrevalence!=0.0, data_bmi_clean$CrudePrevalence/100, 0)
 data_bmi_clean$Year <- as.factor(data_bmi_clean$Year)
@@ -66,21 +69,28 @@ data_bmi_clean$state_cd <- as.factor(data_bmi_clean$state_cd)
 data_bmi_clean$demographic <- as.factor(data_bmi_clean$demographic)
 data_bmi_clean$BMI <- as.factor(data_bmi_clean$BMI)
 data_bmi_clean$state_desc <- tolower(data_bmi_clean$state_desc)
+
+data_bmi_viz$CrudePrevalence <- ifelse(data_bmi_viz$CrudePrevalence!=0.0, data_bmi_viz$CrudePrevalence/100, 0)
+data_bmi_viz$Year <- as.factor(data_bmi_viz$Year)
+data_bmi_viz$state_cd <- as.factor(data_bmi_viz$state_cd)
+data_bmi_viz$demographic <- as.factor(data_bmi_viz$demographic)
+data_bmi_viz$BMI <- as.factor(data_bmi_viz$BMI)
+data_bmi_viz$state_desc <- tolower(data_bmi_viz$state_desc)
 ```
+
 
 ```{r}
 data_bmi_risk <- data_bmi_clean %>% 
-  filter(demographic %in% demographics & BMI %in% risk_bmi_groups) %>%
-  replace(is.na(.), 0)
+  filter(demographic %in% demographics & BMI %in% risk_bmi_groups)
 
-data_bmi_age_risk <- data_bmi_clean %>% 
+data_bmi_age_risk <- data_bmi_risk %>% 
   filter(demographic %in% age & BMI %in% risk_bmi_groups)
 
-data_bmi_sex_risk <- data_bmi_clean %>% 
+data_bmi_sex_risk <- data_bmi_risk %>% 
   filter(demographic %in% sex & BMI %in% risk_bmi_groups)
 
-data_bmi_race_risk <- data_bmi_clean %>% 
-  filter(demographic %in% race & BMI %in% risk_bmi_groups)
+data_bmi_race_risk <- data_bmi_risk %>% 
+  filter(demographic %in% race & BMI %in% risk_bmi_groups & CrudePrevalence != 0)
 ```
 
 ```{r}
@@ -97,7 +107,7 @@ hist(data_bmi_race_risk$CrudePrevalence)
 # 45-54's in year 2021 was significant year of increase
 mod.fit.age <- lm(CrudePrevalence ~ Year + demographic + Year*demographic, data=data_bmi_age_risk)
 summary(mod.fit.age)
-# plot(mod.fit.age)
+plot(mod.fit.age)
 ```
 
 
@@ -119,7 +129,7 @@ plot(mod.fit.sex)
 # unclear, lot of missing data throughout the year of races, removing year for overall picture then. 
 mod.fit.race <- lm(CrudePrevalence ~ Year + demographic + Year*demographic, data=data_bmi_race_risk)
 summary(mod.fit.race)
-# plot(mod.fit.race)
+plot(mod.fit.race)
 ```
 
 # Only Race
@@ -136,7 +146,7 @@ plot(mod.fit.race2)
 
 ```{r}
 # filter to most recent year for most recent behavior
-data_bmi_clean_2022 <- data_bmi_clean %>% 
+data_bmi_clean_2022 <- data_bmi_viz %>% 
   filter(Year==2022)
 head(data_bmi_clean_2022)
 ```
@@ -174,20 +184,21 @@ data_nutrition <- data_npo %>% filter(Class == 'Fruits and Vegetables')
 data_nutrition_filtered <- data_nutrition %>% 
   select(YearEnd, LocationAbbr, LocationDesc,
          `Age(years)`,Gender,`Race/Ethnicity`,
-         Question, Data_Value)
+         Question, Data_Value) %>%
+  filter(! is.na(Data_Value))
+
+data_nutrition_viz <- data_nutrition %>% 
+  select(YearEnd, LocationAbbr, LocationDesc,
+         `Age(years)`,Gender,`Race/Ethnicity`,
+         Question, Data_Value) %>%
+  replace(is.na(.), 0)
 head(data_nutrition_filtered)
 ```
 
 
 ```{r}
-colnames(data_nutrition_filtered)[1] <- 'Year'
-colnames(data_nutrition_filtered)[2] <- 'state_cd'
-colnames(data_nutrition_filtered)[3] <- 'state_desc'
-colnames(data_nutrition_filtered)[4] <- 'age'
-colnames(data_nutrition_filtered)[5] <- 'sex'
-colnames(data_nutrition_filtered)[6] <- 'race_ethnicity'
-colnames(data_nutrition_filtered)[7] <- 'diet_cat'
-colnames(data_nutrition_filtered)[8] <- 'percent'
+colnames(data_nutrition_filtered) <- c('Year', 'state_cd', 'state_desc', 'age', 'sex', 'race_ethnicity', 'diet_cat', 'percent')
+colnames(data_nutrition_viz) <- c('Year', 'state_cd', 'state_desc', 'age', 'sex', 'race_ethnicity', 'diet_cat', 'percent')
 
 data_nutrition_filtered$state_desc <- tolower(data_nutrition_filtered$state_desc)
 data_nutrition_filtered$Year <- as.factor(data_nutrition_filtered$Year)
@@ -199,28 +210,67 @@ data_nutrition_filtered$race_ethnicity <- as.factor(data_nutrition_filtered$race
 data_nutrition_filtered$diet_cat <- as.factor(data_nutrition_filtered$diet_cat)
 data_nutrition_filtered$percent <- ifelse(data_nutrition_filtered$percent!=0.0, data_nutrition_filtered$percent/100, 0.0)
 
-head(data_nutrition_filtered)
+data_nutrition_viz$state_desc <- tolower(data_nutrition_viz$state_desc)
+data_nutrition_viz$Year <- as.factor(data_nutrition_viz$Year)
+data_nutrition_viz$state_cd <- as.factor(data_nutrition_viz$state_cd)
+data_nutrition_viz$state_desc <- as.factor(data_nutrition_viz$state_desc)
+data_nutrition_viz$age <- as.factor(data_nutrition_viz$age)
+data_nutrition_viz$sex <- as.factor(data_nutrition_viz$sex)
+data_nutrition_viz$race_ethnicity <- as.factor(data_nutrition_viz$race_ethnicity)
+data_nutrition_viz$diet_cat <- as.factor(data_nutrition_viz$diet_cat)
+data_nutrition_viz$percent <- ifelse(data_nutrition_viz$percent!=0.0, data_nutrition_viz$percent/100, 0.0)
+
+head(data_nutrition_viz)
 ```
 
+## Vegetable 
 
 ```{r}
-data_nutrition_age <- data_nutrition_filtered %>% 
+head(data_nutrition_filtered)
+
+data_veg <- data_nutrition_filtered %>% 
+  filter(diet_cat=='Percent of adults who report consuming vegetables less than one time daily')
+
+data_fruit <- data_nutrition_filtered %>% 
+  filter(diet_cat=='Percent of adults who report consuming fruit less than one time daily')
+
+data_veg_viz <- data_nutrition_viz %>% 
+  filter(diet_cat=='Percent of adults who report consuming vegetables less than one time daily')
+
+data_fruit_viz <- data_nutrition_viz %>% 
+  filter(diet_cat=='Percent of adults who report consuming fruit less than one time daily')
+```
+
+```{r}
+# veg
+data_veg_age <- data_veg %>% 
   filter(age %in% age_levels)
-
-data_nutrition_sex <- data_nutrition_filtered %>% 
+data_veg_sex <- data_veg %>% 
   filter(sex %in% sex_levels)
+data_veg_race <- data_veg %>% 
+  filter(race_ethnicity %in% race_levels)
 
-data_nutrition_race <- data_nutrition_filtered %>% 
+# fruit
+data_fruit_age <- data_fruit %>% 
+  filter(age %in% age_levels)
+data_fruit_sex <- data_fruit %>% 
+  filter(sex %in% sex_levels)
+data_fruit_race <- data_fruit %>% 
   filter(race_ethnicity %in% race_levels)
 ```
 
 ```{r}
-hist(data_nutrition_age$percent)
-hist(data_nutrition_sex$percent)
-hist(data_nutrition_race$percent)
+hist(data_veg_age$percent)
+hist(data_veg_sex$percent)
+hist(data_veg_race$percent)
+```
+```{r}
+hist(data_fruit_age$percent)
+hist(data_fruit_sex$percent)
+hist(data_fruit_race$percent)
 ```
 
-## Age Model
+## Age Model (Veg)
 
 Going with beta distribution
 - response variable distribution
@@ -233,113 +283,204 @@ https://stats.stackexchange.com/questions/442789/interpretation-of-the-beta-regr
 ```{r, warning=FALSE}
 # more younger not eating at least 1 fruit or 1 veg a day
 # Fit beta regression model
-mod.fit.nutrition.age <- betareg(percent ~ age, link = "logit", data = data_nutrition_age)
-summary(mod.fit.nutrition.age)
+mod.fit.veg.age <- betareg(percent ~ Year + age + Year*age, link = "logit", data = data_veg_age)
+summary(mod.fit.veg.age)
 ```
 
 ```{r}
-plot(mod.fit.nutrition.age, which=1) # check link appropriateness... constant variance here
-plot(mod.fit.nutrition.age, which=2) # checking for outliers
-plot(mod.fit.nutrition.age, which=4) # minor heteroskedasticity
-# hist(mod.fit.nutrition.age$residuals) # wouldn't expect perfect normal distribution with beta distribution
-qqnorm(residuals(mod.fit.nutrition.age, type = "sweighted2"))
-qqline(residuals(mod.fit.nutrition.age, type = "sweighted2"))
+plot(mod.fit.veg.age, which=1) # check link appropriateness... constant variance here
+plot(mod.fit.veg.age, which=2) # checking for outliers
+# plot(mod.fit.veg.age, which=4) # minor heteroskedasticity
+hist(mod.fit.veg.age$residuals) # wouldn't expect perfect normal distribution with beta distribution
+qqnorm(residuals(mod.fit.veg.age, type = "sweighted2"))
+qqline(residuals(mod.fit.veg.age, type = "sweighted2"))
 ```
 
-## Sex Model
+## Sex Model (Veg)
 
-```{r}
+```{r, warning=FALSE}
 # more male not eating at least 1 fruit or 1 veg a day
-mod.fit.nutrition.sex <- lm(percent ~ sex, data=data_nutrition_sex)
-summary(mod.fit.nutrition.sex)
-plot(mod.fit.nutrition.sex)
+head(data_veg_sex)
+mod.fit.veg.sex <- betareg(percent ~ Year + sex + Year*sex, link = "logit", data = data_veg_sex)
+summary(mod.fit.veg.sex)
 ```
+
+```{r}
+plot(mod.fit.veg.sex, which=1) # check link appropriateness... constant variance here
+plot(mod.fit.veg.sex, which=2) # checking for outliers
+# plot(mod.fit.nutrition.sex, which=4) # minor heteroskedasticity
+hist(mod.fit.veg.sex$residuals) # wouldn't expect perfect normal distribution with beta distribution
+qqnorm(residuals(mod.fit.veg.sex, type = "sweighted2"))
+qqline(residuals(mod.fit.veg.sex, type = "sweighted2"))
+```
+
+## Race Model (Veg)
+
+```{r, warning=FALSE}
+# less likely to respond to not eat at least 1 fruit or 1 veg a day: asian, white, other
+# more likely to respond to not eat at least 1 fruit or 1 veg a day: 2 or more races, american indian or alaska native, hawaiian/pacific islander, hispanic, black
+mod.fit.veg.race <- betareg(percent ~ Year + race_ethnicity + Year*race_ethnicity, link = "logit", data = data_veg_race)
+summary(mod.fit.veg.race)
+```
+
+```{r}
+plot(mod.fit.veg.race, which=1) # check link appropriateness... constant variance here
+plot(mod.fit.veg.race, which=2) # checking for outliers
+# plot(mod.fit.veg.race, which=4) # minor heteroskedasticity
+hist(mod.fit.veg.race$residuals) # wouldn't expect perfect normal distribution with beta distribution
+qqnorm(residuals(mod.fit.veg.race, type = "sweighted2"))
+qqline(residuals(mod.fit.veg.race, type = "sweighted2"))
+```
+
+## Age Model (Fruit)
 
 ```{r, warning=FALSE}
 # more younger not eating at least 1 fruit or 1 veg a day
-mod.fit.nutrition.sex <- betareg(percent ~ sex, link = "logit", data = data_nutrition_sex)
-summary(mod.fit.nutrition.sex)
+# Fit beta regression model
+mod.fit.fruit.age <- betareg(percent ~ Year + age + Year*age, link = "logit", data = data_fruit_age)
+summary(mod.fit.fruit.age)
 ```
 
 ```{r}
-plot(mod.fit.nutrition.sex, which=1) # check link appropriateness... constant variance here
-plot(mod.fit.nutrition.sex, which=2) # checking for outliers
-# plot(mod.fit.nutrition.sex, which=4) # minor heteroskedasticity
-hist(mod.fit.nutrition.sex$residuals) # wouldn't expect perfect normal distribution with beta distribution
-qqnorm(residuals(mod.fit.nutrition.sex, type = "sweighted2"))
-qqline(residuals(mod.fit.nutrition.sex, type = "sweighted2"))
+plot(mod.fit.fruit.age, which=1) # check link appropriateness... constant variance here
+plot(mod.fit.fruit.age, which=2) # checking for outliers
+# plot(mod.fit.veg.race, which=4) # minor heteroskedasticity
+hist(mod.fit.fruit.age$residuals) # wouldn't expect perfect normal distribution with beta distribution
+qqnorm(residuals(mod.fit.fruit.age, type = "sweighted2"))
+qqline(residuals(mod.fit.fruit.age, type = "sweighted2"))
 ```
 
-## Race Model
 
-```{r}
-# less likely to respond to not eat at least 1 fruit or 1 veg a day: asian, white, other
-# more likely to respond to not eat at least 1 fruit or 1 veg a day: 2 or more races, american indian or alaska native, hawaiian/pacific islander, hispanic, black
-mod.fit.nutrition.race_old <- lm(percent ~ race_ethnicity, data=data_nutrition_race)
-summary(mod.fit.nutrition.race_old)
-plot(mod.fit.nutrition.race_old)
-```
+## Sex Model (Fruit)
 
 ```{r, warning=FALSE}
-# less likely to respond to not eat at least 1 fruit or 1 veg a day: asian, white, other
-# more likely to respond to not eat at least 1 fruit or 1 veg a day: 2 or more races, american indian or alaska native, hawaiian/pacific islander, hispanic, black
-mod.fit.nutrition.race <- betareg(percent ~ race_ethnicity, link = "logit", data = data_nutrition_race)
-summary(mod.fit.nutrition.race)
+# more younger not eating at least 1 fruit or 1 veg a day
+# Fit beta regression model
+mod.fit.sex.age <- betareg(percent ~ Year + sex + Year*sex, link = "logit", data = data_fruit_sex)
+summary(mod.fit.sex.age)
 ```
 
 ```{r}
-plot(mod.fit.nutrition.race, which=1) # check link appropriateness... constant variance here
-plot(mod.fit.nutrition.race, which=2) # checking for outliers
-# plot(mod.fit.nutrition.race, which=4) # minor heteroskedasticity
-hist(mod.fit.nutrition.race$residuals) # wouldn't expect perfect normal distribution with beta distribution
-qqnorm(residuals(mod.fit.nutrition.race, type = "sweighted2"))
-qqline(residuals(mod.fit.nutrition.race, type = "sweighted2"))
+plot(mod.fit.fruit.age, which=1) # check link appropriateness... constant variance here
+plot(mod.fit.fruit.age, which=2) # checking for outliers
+# plot(mod.fit.veg.race, which=4) # minor heteroskedasticity
+hist(mod.fit.fruit.age$residuals) # wouldn't expect perfect normal distribution with beta distribution
+qqnorm(residuals(mod.fit.fruit.age, type = "sweighted2"))
+qqline(residuals(mod.fit.fruit.age, type = "sweighted2"))
 ```
+
+## Race Model (Fruit)
+
+```{r, warning=FALSE}
+# more younger not eating at least 1 fruit or 1 veg a day
+# Fit beta regression model
+mod.fit.fruit.race <- betareg(percent ~ Year + race_ethnicity + Year*race_ethnicity, link = "logit", data = data_fruit_race)
+summary(mod.fit.fruit.race)
+```
+
+```{r}
+plot(mod.fit.fruit.race, which=1) # check link appropriateness... constant variance here
+plot(mod.fit.fruit.race, which=2) # checking for outliers
+# plot(mod.fit.veg.race, which=4) # minor heteroskedasticity
+hist(mod.fit.fruit.race$residuals) # wouldn't expect perfect normal distribution with beta distribution
+qqnorm(residuals(mod.fit.fruit.race, type = "sweighted2"))
+qqline(residuals(mod.fit.fruit.race, type = "sweighted2"))
+```
+
 
 ## Visualizations
 
-```{r}
+```{r, warning=FALSE}
 # 2019 most recent data for diet questions
-data_nutrition_2019 <- data_nutrition_filtered %>% 
+data_nutrition_2019 <- data_nutrition_viz %>% 
   filter(Year == 2019 & state_cd != 'US')
 
-data_nutrition_geo_2019 <- left_join(fifty_states,data_nutrition_2019, by='state_desc')
+# veg
+data_veg_2019 <- data_nutrition_2019 %>% 
+  filter(diet_cat == 'Percent of adults who report consuming vegetables less than one time daily')
 
-data_nutrition_geo_age <- data_nutrition_geo_2019 %>%
+data_veg_geo_2019 <- left_join(fifty_states,data_veg_2019, by='state_desc')
+
+data_veg_geo_age <- data_veg_geo_2019 %>%
   filter(age %in% age_levels)
-data_nutrition_geo_sex <- data_nutrition_geo_2019 %>%
+data_veg_geo_sex <- data_veg_geo_2019 %>%
   filter(sex %in% sex_levels)
-data_nutrition_geo_race <- data_nutrition_geo_2019 %>%
+data_veg_geo_race <- data_veg_geo_2019 %>%
+  filter(race_ethnicity %in% race_levels)
+
+# fruit
+data_fruit_2019 <- data_nutrition_2019 %>% 
+  filter(diet_cat == 'Percent of adults who report consuming fruit less than one time daily')
+data_fruit_geo_2019 <- left_join(fifty_states,data_fruit_2019, by='state_desc')
+
+data_fruit_geo_age <- data_fruit_geo_2019 %>%
+  filter(age %in% age_levels)
+data_fruit_geo_sex <- data_fruit_geo_2019 %>%
+  filter(sex %in% sex_levels)
+data_fruit_geo_race <- data_fruit_geo_2019 %>%
   filter(race_ethnicity %in% race_levels)
 ```
 
-### Age
+### Age (Veg)
 
 ```{r}
 ggplot() + 
-  geom_polygon(data=data_nutrition_geo_age, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  geom_polygon(data=data_veg_geo_age, aes(x=long, y=lat, group = group, fill=percent), color='white') +
   scale_size(name="") + 
   facet_wrap(age~.)+
   theme_void() +
   labs(fill = 'Percent %')
 ```
 
-### Sex
+### Sex (Veg)
 
 ```{r, fig.width=5, fig.height=5}
 ggplot() + 
-  geom_polygon(data=data_nutrition_geo_sex, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  geom_polygon(data=data_veg_geo_sex, aes(x=long, y=lat, group = group, fill=percent), color='white') +
   scale_size(name="") + 
   facet_grid(sex~.)+
   theme_void() +
   labs(fill = 'Percent %')
 ```
 
-### Race
+### Race (Veg)
 
 ```{r}
 ggplot() + 
-  geom_polygon(data=data_nutrition_geo_race, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  geom_polygon(data=data_veg_geo_race, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  scale_size(name="") + 
+  facet_wrap(race_ethnicity~.)+
+  theme_void() +
+  labs(fill = 'Percent %')
+```
+
+### Age (Fruit)
+
+```{r}
+ggplot() + 
+  geom_polygon(data=data_fruit_geo_age, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  scale_size(name="") + 
+  facet_wrap(age~.)+
+  theme_void() +
+  labs(fill = 'Percent %')
+```
+
+### Sex (Fruit)
+
+```{r, fig.width=5, fig.height=5}
+ggplot() + 
+  geom_polygon(data=data_fruit_geo_sex, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  scale_size(name="") + 
+  facet_grid(sex~.)+
+  theme_void() +
+  labs(fill = 'Percent %')
+```
+
+### Race (Fruit)
+
+```{r}
+ggplot() + 
+  geom_polygon(data=data_fruit_geo_race, aes(x=long, y=lat, group = group, fill=percent), color='white') +
   scale_size(name="") + 
   facet_wrap(race_ethnicity~.)+
   theme_void() +
@@ -353,60 +494,63 @@ CDC Guidelines:
 Adults (18-64 years): At least 150 minutes a week of moderate intensity activity such as brisk walking. At least 2 days a week of activities that strengthen muscles. Aim for the recommended activity level but be as active as you are able.
 
 ```{r}
-# adults who meet cdc criteria for activity
 data_physact_q1 <- data_physact %>% 
   filter(Question == 'Participated in enough Aerobic and Muscle Strengthening exercises to meet guidelines (variable calculated from one or more BRFSS questions)') %>%
   select(Year, Locationabbr, Locationdesc, Break_Out, Response, Data_value) %>% 
+  filter(! is.na(Data_value))
+
+data_physact_q1_viz <- data_physact %>% 
+  filter(Question == 'Participated in enough Aerobic and Muscle Strengthening exercises to meet guidelines (variable calculated from one or more BRFSS questions)') %>%
+  select(Year, Locationabbr, Locationdesc, Break_Out, Response, Data_value) %>% 
   replace(is.na(.), 0)
-head(data_physact_q1)
+head(data_physact_q1_viz)
 ```
 
 ```{r}
-colnames(data_physact_q1)[1] <- 'Year'
-colnames(data_physact_q1)[2] <- 'state_cd'
-colnames(data_physact_q1)[3] <- 'state_desc'
-colnames(data_physact_q1)[4] <- 'demographic'
-colnames(data_physact_q1)[5] <- 'Response'
-colnames(data_physact_q1)[6] <- 'CrudePrevalence'
+colnames(data_physact_q1) <- c('Year', 'state_cd', 'state_desc', 'demographic', 'Response', 'CrudePrevalence')
+colnames(data_physact_q1_viz) <- c('Year', 'state_cd', 'state_desc', 'demographic', 'Response', 'CrudePrevalence')
 
-data_physact_q1$CrudePrevalence <- ifelse(data_physact_q1$CrudePrevalence!=0.0, data_physact_q1$CrudePrevalence/100, 0.0)
 data_physact_q1$Year <- as.factor(data_physact_q1$Year)
 data_physact_q1$state_cd <- as.factor(data_physact_q1$state_cd)
 data_physact_q1$demographic <- as.factor(data_physact_q1$demographic)
 data_physact_q1$Response <- as.factor(data_physact_q1$Response)
 data_physact_q1$state_desc <- tolower(data_physact_q1$state_desc)
+data_physact_q1$CrudePrevalence <- ifelse(data_physact_q1$CrudePrevalence!=0.0, data_physact_q1$CrudePrevalence/100, 0.0)
+
+data_physact_q1_viz$Year <- as.factor(data_physact_q1_viz$Year)
+data_physact_q1_viz$state_cd <- as.factor(data_physact_q1_viz$state_cd)
+data_physact_q1_viz$demographic <- as.factor(data_physact_q1_viz$demographic)
+data_physact_q1_viz$Response <- as.factor(data_physact_q1_viz$Response)
+data_physact_q1_viz$state_desc <- tolower(data_physact_q1_viz$state_desc)
+data_physact_q1_viz$CrudePrevalence <- ifelse(data_physact_q1_viz$CrudePrevalence!=0.0, data_physact_q1_viz$CrudePrevalence/100, 0.0)
 ```
 
 ```{r}
-data_physact_q1_2019 <- data_physact_q1 %>%
-  filter(Year==2019)
+# filter out the NAs
+data_physact_inactive <- data_physact_q1 %>% 
+  filter(Response=='No')
 
-data_physact_inactive <- data_physact_q1_2019 %>% 
-  filter(demographic %in% demographics & Response == 'No') %>%
-  replace(is.na(.), 0)
 data_physact_inactive_age <- data_physact_inactive %>% 
-  filter(demographic %in% age) %>%
-  replace(is.na(.), 0)
+  filter(demographic %in% age)
 data_physact_inactive_sex <- data_physact_inactive %>% 
-  filter(demographic %in% sex) %>%
-  replace(is.na(.), 0)
+  filter(demographic %in% sex)
 data_physact_inactive_race <- data_physact_inactive %>% 
-  filter(demographic %in% race) %>%
-  replace(is.na(.), 0)
+  filter(demographic %in% race)
+
 head(data_physact_inactive_age)
 ```
 
 ```{r}
 hist(data_physact_inactive_age$CrudePrevalence)
-hist(data_physact_inactive_age$CrudePrevalence)
-hist(data_physact_inactive_age$CrudePrevalence)
+hist(data_physact_inactive_sex$CrudePrevalence)
+hist(data_physact_inactive_race$CrudePrevalence)
 ```
 
 ## Age Model
 
 ```{r}
 # all age groups not meeting CDC guidelines for fitness but gets worse with older groups
-mod.fit.inactive.age <- lm(CrudePrevalence ~ demographic, data=data_physact_inactive_age)
+mod.fit.inactive.age <- lm(CrudePrevalence ~ Year + demographic + Year*demographic, data=data_physact_inactive_age)
 summary(mod.fit.inactive.age)
 plot(mod.fit.inactive.age)
 ```
@@ -415,7 +559,7 @@ plot(mod.fit.inactive.age)
 
 ```{r}
 # males more likely to abide to CDC guidelines for fitness
-mod.fit.inactive.sex <- lm(CrudePrevalence ~ demographic, data=data_physact_inactive_sex)
+mod.fit.inactive.sex <- lm(CrudePrevalence ~ Year + demographic + Year*demographic, data=data_physact_inactive_sex)
 summary(mod.fit.inactive.sex)
 plot(mod.fit.inactive.sex)
 ```
@@ -425,7 +569,7 @@ plot(mod.fit.inactive.sex)
 ```{r}
 # more likely to abide to CDC guidelines for fitness: asian, pacific islander (i suspect lack of data for significant decrease), and other
 # less likely to abide to CDC guidelines for fitness: american indian/alaskan native, black, hispanic, multiracial, white
-mod.fit.inactive.race <- lm(CrudePrevalence ~ demographic, data=data_physact_inactive_race)
+mod.fit.inactive.race <- lm(CrudePrevalence ~ Year + demographic + Year+demographic, data=data_physact_inactive_race)
 summary(mod.fit.inactive.race)
 plot(mod.fit.inactive.race)
 ```
@@ -433,59 +577,33 @@ plot(mod.fit.inactive.race)
 ## Visualizations
 
 ```{r}
-data_inactive_geo_race <- left_join(fifty_states,data_physact_inactive_race, by='state_desc')
-data_inactive_geo_race <- data_inactive_geo_race %>% drop_na()
-head(data_inactive_geo_race)
+data_physact2 <- data_npo %>% 
+  filter(Class == 'Physical Activity' & Question == 'Percent of adults who engage in no leisure-time physical activity')
 
-data_physact2 <- data_npo %>% filter(Class == 'Physical Activity')
-```
-
-```{r}
 # 2019 most recent data for activity questions
 data_physact2_2019 <- data_physact2 %>% 
   filter(YearEnd == 2019) %>%
   select(LocationAbbr, LocationDesc, 'Age(years)', Gender, 'Race/Ethnicity', Question, Data_Value) %>%
   replace(is.na(.), 0)
-head(data_physact2_2019)
-```
 
-```{r}
-colnames(data_physact2_2019)[1] <- 'state_cd'
-colnames(data_physact2_2019)[2] <- 'state_desc'
-colnames(data_physact2_2019)[3] <- 'age_group'
-colnames(data_physact2_2019)[4] <- 'sex'
-colnames(data_physact2_2019)[5] <- 'race_ethnicity'
-colnames(data_physact2_2019)[6] <- 'fitness_category'
-colnames(data_physact2_2019)[7] <- 'percent'
+colnames(data_physact2_2019) <- c('state_cd', 'state_desc', 'age_group', 'sex', 'race_ethnicity', 'fitness_category', 'percent')
 data_physact2_2019$state_desc <- tolower(data_physact2_2019$state_desc)
 head(data_physact2_2019)
 ```
 
-```{r}
-age_levels <- c('18 - 24', '25 - 34', '35 - 44', '45 - 54')
-sex_levels <- c('Female', 'Male')
-race_levels <- c("2 or more races", "American Indian/Alaska Native", "Asian", "Hawaiian/Pacific Islander", "Hispanic", "Non-Hispanic Black", "Non-Hispanic White", "Other")
+
+```{r, warning=FALSE}
 
 data_inactive_geo_2019 <- left_join(fifty_states,data_physact2_2019, by='state_desc')
 
-data_nutrition_geo_age <- data_inactive_geo_2019 %>%
+data_inactive_geo_age <- data_inactive_geo_2019 %>%
   filter(age_group %in% age_levels)
 
-data_nutrition_geo_sex <- data_inactive_geo_2019 %>%
+data_inactive_geo_sex <- data_inactive_geo_2019 %>%
   filter(sex %in% sex_levels)
 
-data_nutrition_geo_race <- data_inactive_geo_2019 %>%
+data_inactive_geo_race <- data_inactive_geo_2019 %>%
   filter(race_ethnicity %in% race_levels)
-```
-
-```{r}
-ggplot() + 
-  geom_polygon(data=data_inactive_geo_race, aes(x=long, y=lat, group = group, fill=CrudePrevalence), color='white') + 
-  scale_size(name="") + 
-  facet_wrap(demographic~.)+
-  theme_void() +
-  ggtitle('Inactive Adults - Race') + 
-  labs(fill = 'Crude Prevalence %')
 ```
 
 
@@ -493,11 +611,10 @@ ggplot() +
 
 ```{r}
 ggplot() + 
-  geom_polygon(data=data_nutrition_geo_age, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  geom_polygon(data=data_inactive_geo_age, aes(x=long, y=lat, group = group, fill=percent), color='white') +
   scale_size(name="") + 
   facet_wrap(age_group~.)+
   theme_void() +
-  # ggtitle('Inactive Adults - Race') + 
   labs(fill = 'Percent %')
 ```
 
@@ -505,7 +622,7 @@ ggplot() +
 
 ```{r, fig.height=5, fig.width=5}
 ggplot() + 
-  geom_polygon(data=data_nutrition_geo_sex, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  geom_polygon(data=data_inactive_geo_sex, aes(x=long, y=lat, group = group, fill=percent), color='white') +
   scale_size(name="") + 
   facet_grid(sex~.)+
   theme_void() +
@@ -520,10 +637,9 @@ Races: American Indian/Alaska Native, Black, non-Hispanic, Hispanic, Multiracial
 risk_states <- c('OK', 'AL', 'VA', 'SD', 'WI', 'ME', 'WY', 'MS', 'WV', 'IN')
 ```{r}
 ggplot() + 
-  geom_polygon(data=data_nutrition_geo_race, aes(x=long, y=lat, group = group, fill=percent), color='white') +
+  geom_polygon(data=data_inactive_geo_race, aes(x=long, y=lat, group = group, fill=percent), color='white') +
   scale_size(name="") + 
   facet_wrap(race_ethnicity~.)+
   theme_void() +
-  # ggtitle('Inactive Adults - Race') + 
   labs(fill = 'Percent %')
 ```
