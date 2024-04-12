@@ -47,9 +47,10 @@ race_levels <- c("2 or more races", "American Indian/Alaska Native", "Asian", "H
 ## Data Cleaning
 
 ```{r}
+# data_bmi %>% filter(is.na(Data_value))
 data_bmi_clean <- data_bmi %>% 
   select(Year, Locationabbr, Locationdesc, Break_Out, Response, Data_value) %>%
-  replace(is.na(.), 0)
+  filter(! is.na(Data_value))
 head(data_bmi_clean)
 ```
 
@@ -68,10 +69,10 @@ data_bmi_clean$BMI <- as.factor(data_bmi_clean$BMI)
 data_bmi_clean$state_desc <- tolower(data_bmi_clean$state_desc)
 ```
 
+
 ```{r}
 data_bmi_risk <- data_bmi_clean %>% 
-  filter(demographic %in% demographics & BMI %in% risk_bmi_groups) %>%
-  replace(is.na(.), 0)
+  filter(demographic %in% demographics & BMI %in% risk_bmi_groups)
 
 data_bmi_age_risk <- data_bmi_clean %>% 
   filter(demographic %in% age & BMI %in% risk_bmi_groups)
@@ -80,7 +81,7 @@ data_bmi_sex_risk <- data_bmi_clean %>%
   filter(demographic %in% sex & BMI %in% risk_bmi_groups)
 
 data_bmi_race_risk <- data_bmi_clean %>% 
-  filter(demographic %in% race & BMI %in% risk_bmi_groups)
+  filter(demographic %in% race & BMI %in% risk_bmi_groups & CrudePrevalence != 0)
 ```
 
 ```{r}
@@ -97,7 +98,7 @@ hist(data_bmi_race_risk$CrudePrevalence)
 # 45-54's in year 2021 was significant year of increase
 mod.fit.age <- lm(CrudePrevalence ~ Year + demographic + Year*demographic, data=data_bmi_age_risk)
 summary(mod.fit.age)
-# plot(mod.fit.age)
+plot(mod.fit.age)
 ```
 
 
@@ -119,7 +120,7 @@ plot(mod.fit.sex)
 # unclear, lot of missing data throughout the year of races, removing year for overall picture then. 
 mod.fit.race <- lm(CrudePrevalence ~ Year + demographic + Year*demographic, data=data_bmi_race_risk)
 summary(mod.fit.race)
-# plot(mod.fit.race)
+plot(mod.fit.race)
 ```
 
 # Only Race
@@ -174,7 +175,8 @@ data_nutrition <- data_npo %>% filter(Class == 'Fruits and Vegetables')
 data_nutrition_filtered <- data_nutrition %>% 
   select(YearEnd, LocationAbbr, LocationDesc,
          `Age(years)`,Gender,`Race/Ethnicity`,
-         Question, Data_Value)
+         Question, Data_Value) %>%
+  filter(! is.na(Data_Value))
 head(data_nutrition_filtered)
 ```
 
@@ -240,23 +242,16 @@ summary(mod.fit.nutrition.age)
 ```{r}
 plot(mod.fit.nutrition.age, which=1) # check link appropriateness... constant variance here
 plot(mod.fit.nutrition.age, which=2) # checking for outliers
-plot(mod.fit.nutrition.age, which=4) # minor heteroskedasticity
-# hist(mod.fit.nutrition.age$residuals) # wouldn't expect perfect normal distribution with beta distribution
+# plot(mod.fit.nutrition.age, which=4) # minor heteroskedasticity
+hist(mod.fit.nutrition.age$residuals) # wouldn't expect perfect normal distribution with beta distribution
 qqnorm(residuals(mod.fit.nutrition.age, type = "sweighted2"))
 qqline(residuals(mod.fit.nutrition.age, type = "sweighted2"))
 ```
 
 ## Sex Model
 
-```{r}
-# more male not eating at least 1 fruit or 1 veg a day
-mod.fit.nutrition.sex <- lm(percent ~ sex, data=data_nutrition_sex)
-summary(mod.fit.nutrition.sex)
-plot(mod.fit.nutrition.sex)
-```
-
 ```{r, warning=FALSE}
-# more younger not eating at least 1 fruit or 1 veg a day
+# more male not eating at least 1 fruit or 1 veg a day
 mod.fit.nutrition.sex <- betareg(percent ~ sex, link = "logit", data = data_nutrition_sex)
 summary(mod.fit.nutrition.sex)
 ```
@@ -271,14 +266,6 @@ qqline(residuals(mod.fit.nutrition.sex, type = "sweighted2"))
 ```
 
 ## Race Model
-
-```{r}
-# less likely to respond to not eat at least 1 fruit or 1 veg a day: asian, white, other
-# more likely to respond to not eat at least 1 fruit or 1 veg a day: 2 or more races, american indian or alaska native, hawaiian/pacific islander, hispanic, black
-mod.fit.nutrition.race_old <- lm(percent ~ race_ethnicity, data=data_nutrition_race)
-summary(mod.fit.nutrition.race_old)
-plot(mod.fit.nutrition.race_old)
-```
 
 ```{r, warning=FALSE}
 # less likely to respond to not eat at least 1 fruit or 1 veg a day: asian, white, other
@@ -357,7 +344,7 @@ Adults (18-64 years): At least 150 minutes a week of moderate intensity activity
 data_physact_q1 <- data_physact %>% 
   filter(Question == 'Participated in enough Aerobic and Muscle Strengthening exercises to meet guidelines (variable calculated from one or more BRFSS questions)') %>%
   select(Year, Locationabbr, Locationdesc, Break_Out, Response, Data_value) %>% 
-  replace(is.na(.), 0)
+  filter(! is.na(Data_value))
 head(data_physact_q1)
 ```
 
