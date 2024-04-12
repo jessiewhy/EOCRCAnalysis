@@ -3,6 +3,9 @@
 # data files
 crc/
 
+# old code
+old/
+
 # History files
 .Rhistory
 .Rapp.history
