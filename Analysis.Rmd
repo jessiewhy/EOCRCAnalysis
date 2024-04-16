@@ -467,34 +467,40 @@ plot(mod.fit.fruit.race2)
 
 ## Visualizations
 
+```{r}
+head(data_nutrition_viz)
+data_nutrition_viz %>%
+  filter(Year==2022)
+```
+
 ```{r, warning=FALSE}
-# 2019 most recent data for diet questions
-data_nutrition_2019 <- data_nutrition_viz %>% 
-  filter(Year == 2019 & state_cd != 'US')
+# 2021 most recent data for diet questions
+data_nutrition_2021 <- data_nutrition_viz %>% 
+  filter(Year == 2021 & state_cd != 'US')
 
 # veg
-data_veg_2019 <- data_nutrition_2019 %>% 
+data_veg_2021 <- data_nutrition_2021 %>% 
   filter(diet_cat == 'Percent of adults who report consuming vegetables less than one time daily')
 
-data_veg_geo_2019 <- left_join(fifty_states,data_veg_2019, by='state_desc')
+data_veg_geo_2021 <- left_join(fifty_states,data_veg_2021, by='state_desc')
 
-data_veg_geo_age <- data_veg_geo_2019 %>%
+data_veg_geo_age <- data_veg_geo_2021 %>%
   filter(age %in% age_levels)
-data_veg_geo_sex <- data_veg_geo_2019 %>%
+data_veg_geo_sex <- data_veg_geo_2021 %>%
   filter(sex %in% sex_levels)
-data_veg_geo_race <- data_veg_geo_2019 %>%
+data_veg_geo_race <- data_veg_geo_2021 %>%
   filter(race_ethnicity %in% race_levels)
 
 # fruit
-data_fruit_2019 <- data_nutrition_2019 %>% 
+data_fruit_2021 <- data_nutrition_2021 %>% 
   filter(diet_cat == 'Percent of adults who report consuming fruit less than one time daily')
-data_fruit_geo_2019 <- left_join(fifty_states,data_fruit_2019, by='state_desc')
+data_fruit_geo_2021 <- left_join(fifty_states,data_fruit_2021, by='state_desc')
 
-data_fruit_geo_age <- data_fruit_geo_2019 %>%
+data_fruit_geo_age <- data_fruit_geo_2021 %>%
   filter(age %in% age_levels)
-data_fruit_geo_sex <- data_fruit_geo_2019 %>%
+data_fruit_geo_sex <- data_fruit_geo_2021 %>%
   filter(sex %in% sex_levels)
-data_fruit_geo_race <- data_fruit_geo_2019 %>%
+data_fruit_geo_race <- data_fruit_geo_2021 %>%
   filter(race_ethnicity %in% race_levels)
 ```
 
@@ -506,7 +512,7 @@ ggplot() +
   scale_size(name="") + 
   facet_wrap(age~.)+
   theme_void() +
-  labs(fill = 'Percent %')
+  labs(fill = 'Proportion')
 ```
 
 ### Sex (Veg)
@@ -517,7 +523,7 @@ ggplot() +
   scale_size(name="") + 
   facet_grid(sex~.)+
   theme_void() +
-  labs(fill = 'Percent %')
+  labs(fill = 'Proportion')
 ```
 
 ### Race (Veg)
@@ -528,7 +534,7 @@ ggplot() +
   scale_size(name="") + 
   facet_wrap(race_ethnicity~.)+
   theme_void() +
-  labs(fill = 'Percent %')
+  labs(fill = 'Proportion')
 ```
 
 ### Age (Fruit)
@@ -539,7 +545,7 @@ ggplot() +
   scale_size(name="") + 
   facet_wrap(age~.)+
   theme_void() +
-  labs(fill = 'Percent %')
+  labs(fill = 'Proportion')
 ```
 
 ### Sex (Fruit)
@@ -550,7 +556,7 @@ ggplot() +
   scale_size(name="") + 
   facet_grid(sex~.)+
   theme_void() +
-  labs(fill = 'Percent %')
+  labs(fill = 'Proportion')
 ```
 
 ### Race (Fruit)
@@ -561,7 +567,7 @@ ggplot() +
   scale_size(name="") + 
   facet_wrap(race_ethnicity~.)+
   theme_void() +
-  labs(fill = 'Percent %')
+  labs(fill = 'Proportion')
 ```
 
 # Fitness
@@ -660,34 +666,40 @@ qqnorm(residuals(mod.fit.inactive.race, type = "sweighted2"))
 qqline(residuals(mod.fit.inactive.race, type = "sweighted2"))
 ```
 
+```{r}
+mod.fit.inactive.race2 <- lm(CrudePrevalence ~ Year + demographic + Year+demographic, data=data_physact_inactive_race)
+summary(mod.fit.inactive.race2)
+```
+
 ## Visualizations
 
 ```{r}
 data_physact2 <- data_npo %>% 
   filter(Class == 'Physical Activity' & Question == 'Percent of adults who engage in no leisure-time physical activity')
 
-# 2019 most recent data for activity questions
-data_physact2_2019 <- data_physact2 %>% 
-  filter(YearEnd == 2019) %>%
+# 2022 most recent data for activity questions
+data_physact2_2022 <- data_physact2 %>% 
+  filter(YearEnd == 2022) %>%
   select(LocationAbbr, LocationDesc, 'Age(years)', Gender, 'Race/Ethnicity', Question, Data_Value) %>%
   replace(is.na(.), 0)
 
-colnames(data_physact2_2019) <- c('state_cd', 'state_desc', 'age_group', 'sex', 'race_ethnicity', 'fitness_category', 'percent')
-data_physact2_2019$state_desc <- tolower(data_physact2_2019$state_desc)
-head(data_physact2_2019)
+colnames(data_physact2_2022) <- c('state_cd', 'state_desc', 'age_group', 'sex', 'race_ethnicity', 'fitness_category', 'percent')
+data_physact2_2022$state_desc <- tolower(data_physact2_2022$state_desc)
+head(data_physact2_2022)
 ```
 
 
 ```{r, warning=FALSE}
-data_inactive_geo_2019 <- left_join(fifty_states,data_physact2_2019, by='state_desc')
+data_inactive_geo_2022 <- left_join(fifty_states,data_physact2_2022, by='state_desc')
+data_inactive_geo_2022$percent <- data_inactive_geo_2022$percent/100
 
-data_inactive_geo_age <- data_inactive_geo_2019 %>%
+data_inactive_geo_age <- data_inactive_geo_2022 %>%
   filter(age_group %in% age_levels)
 
-data_inactive_geo_sex <- data_inactive_geo_2019 %>%
+data_inactive_geo_sex <- data_inactive_geo_2022 %>%
   filter(sex %in% sex_levels)
 
-data_inactive_geo_race <- data_inactive_geo_2019 %>%
+data_inactive_geo_race <- data_inactive_geo_2022 %>%
   filter(race_ethnicity %in% race_levels)
 ```
 
@@ -700,7 +712,7 @@ ggplot() +
   scale_size(name="") + 
   facet_wrap(age_group~.)+
   theme_void() +
-  labs(fill = 'Percent %')
+  labs(fill = 'Proportion')
 ```
 
 ### Sex
@@ -712,7 +724,7 @@ ggplot() +
   facet_grid(sex~.)+
   theme_void() +
   # ggtitle('Inactive Adults - Race') + 
-  labs(fill = 'Percent %')
+  labs(fill = 'Proportion')
 ```
 
 ### Race
@@ -726,5 +738,5 @@ ggplot() +
   scale_size(name="") + 
   facet_wrap(race_ethnicity~.)+
   theme_void() +
-  labs(fill = 'Percent %')
+  labs(fill = 'Proportion')
 ```
